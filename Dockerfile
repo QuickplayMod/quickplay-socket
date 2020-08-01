@@ -1,12 +1,14 @@
-FROM node:10
+FROM node:14
 CMD [ "npm", "start" ]
 EXPOSE 80
 
 WORKDIR /usr/src/app
 
 COPY ./package.json .
-COPY ./npm-shrinkwrap.json .
+COPY ./package-lock.json .
 
 RUN npm install
 
 COPY . .
+
+RUN ./node_modules/.bin/tsc

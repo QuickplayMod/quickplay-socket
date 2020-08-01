@@ -1,7 +1,7 @@
 import * as WebSocket from 'ws'
 import SystemOutAction from './actions/clientbound/SystemOutAction.class'
 
-const wss = new WebSocket.Server({ port: 54678 })
+const wss = new WebSocket.Server({ port: 80 })
 
 console.log('start')
 

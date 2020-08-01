@@ -3,7 +3,8 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "start": "node build/app.js"
+    "start": "node build/app.js",
+    "dev": "nodemon -L --inspect=0.0.0.0:5858"
   },
   "dependencies": {
     "mysql": "^2.18.1",

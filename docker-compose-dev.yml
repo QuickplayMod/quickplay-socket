@@ -1,21 +1,24 @@
 version: '3.8'
 services:
-  web:
+  socket:
     depends_on:
       - db
     image: robere2/quickplay-socket
     ports:
       - "54678:80"
+      - "5858:5858"
     restart: unless-stopped
     volumes:
-      - ./glyphs:/usr/src/app/glyphs
+      - ../glyphs-volume:/usr/src/app/glyphs
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
     env_file:
-      - socket.env
+      - .env
   db:
     image: mysql:8
     command: --default-authentication-plugin=mysql_native_password
     restart: unless-stopped
     volumes:
-      - ./db-data:/var/lib/mysql
+      - ../db-volume:/var/lib/mysql
     env_file:
       - docker-db.env
