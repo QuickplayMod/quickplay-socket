@@ -12,6 +12,7 @@ services:
       - ../glyphs-volume:/usr/src/app/glyphs
       - .:/usr/src/app
       - /usr/src/app/node_modules
+    command: npm run dev
     env_file:
       - .env
   db:
