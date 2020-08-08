@@ -19,9 +19,15 @@ class SetButtonAction extends Action {
      * Create a new SetButtonAction.
      * @param button {Button} Button to be saved to the client.
      */
-    constructor (button: Button) {
+    constructor (button?: Button) {
         super()
         this.id = 8
+
+        // Don't add payload if the first payload item wasn't provided
+        if(button == undefined) {
+            return
+        }
+
         this.addPayload(Buffer.from(button.key))
         this.addPayload(Buffer.from(JSON.stringify(button.availableOn)))
         this.addPayload(Buffer.from(button.protocol))

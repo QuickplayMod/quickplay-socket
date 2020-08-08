@@ -17,9 +17,15 @@ class SetAliasedActionAction extends Action {
      * Create a new SetAliasedActionAction.
      * @param aliasedAction {AliasedAction} Aliased action to be saved to the client.
      */
-    constructor (aliasedAction: AliasedAction) {
+    constructor (aliasedAction?: AliasedAction) {
         super()
         this.id = 7
+
+        // Don't add payload if the first payload item wasn't provided
+        if(aliasedAction == undefined) {
+            return
+        }
+
         this.addPayload(Buffer.from(aliasedAction.key))
         this.addPayload(Buffer.from(JSON.stringify(aliasedAction.availableOn)))
         this.addPayload(Buffer.from(aliasedAction.protocol))

@@ -12,9 +12,15 @@ class SendChatCommandAction extends Action {
 	 * and the client will add it back. To run a command that begins with two slashes (e.g. //wand, like WorldEdit), you
 	 * must provide both slashes.
 	 */
-    constructor (cmd: string) {
+    constructor (cmd?: string) {
         super()
         this.id = 6
+
+        // Don't add payload if the first payload item wasn't provided
+        if(cmd == undefined) {
+            return
+        }
+
         if (cmd.startsWith('/')) { // Remove beginning slash if provided.
             cmd = cmd.slice(1)
         }

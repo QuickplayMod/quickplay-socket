@@ -7,7 +7,6 @@ const ScreenTypes = Object.freeze({
 
 class Screen {
 
-    id: number
     key: string
     availableOn: string[] = []
     protocol = ''
@@ -15,6 +14,7 @@ class Screen {
     screenType = ''
     translationKey = ''
     backButtonActions: number[] = [] // IDs of AliasedActions
+    imageURL = ''
 
     /**
      * Constructor
@@ -34,26 +34,19 @@ class Screen {
 
     /**
      * Pull a screen from the database and fill in it's serialized fields.
-     * @param idOrKey {number|string} The ID or key of the screen to pull.
+     * @param key {string} The key of the screen to pull.
      */
-    static async pull(idOrKey: number|string): Promise<Screen> {
-        let query
-
-        if(typeof idOrKey == 'number') {
-            query = 'SELECT * FROM screens WHERE id=?'
-        } else {
-            query = 'SELECT * FROM screens WHERE `key`=?'
-        }
-        const res = await pool.query(query, [idOrKey])
+    static async pull(key: string): Promise<Screen> {
+        const res = await pool.query('SELECT * FROM screens WHERE `key`=?', [key])
 
         if (res.length <= 0) {
             return null
         }
         const s = new Screen(res[0].key, res[0].screenType)
-        s.id = res[0].id
         s.availableOn = JSON.parse(res[0].availableOn)
         s.protocol = res[0].protocol
         s.translationKey = res[0].translationKey
+        s.imageURL = res[0].imageURL
 
         const actions = JSON.parse(res[0].backButtonActions)
         for(let i = 0; i < actions.length; i++) {

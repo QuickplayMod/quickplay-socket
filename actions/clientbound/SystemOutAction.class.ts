@@ -10,9 +10,15 @@ class SystemOutAction extends Action {
 	 * Create a new SystemOutAction.
 	 * @param message {string} the message to send to the client's logs
 	 */
-    constructor (message: string) {
+    constructor (message?: string) {
         super()
         this.id = 4
+
+        // Don't add payload if the first payload item wasn't provided
+        if(message == undefined) {
+            return
+        }
+
         this.addPayload(Buffer.from(message))
     }
 }

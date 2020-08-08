@@ -3,10 +3,11 @@ services:
   socket:
     depends_on:
       - db
+      - redis
     image: robere2/quickplay-socket
     ports:
       - "54678:80"
-      - "5858:5858"
+      - "5859:5859"
     restart: unless-stopped
     volumes:
       - ../glyphs-volume:/usr/src/app/glyphs
@@ -15,6 +16,13 @@ services:
     command: npm run dev
     env_file:
       - .env
+  redis:
+    image: redis:6
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    volumes:
+      - ../redis-volume:/var/lib/redis
   db:
     image: mysql:8
     ports:

@@ -13,7 +13,7 @@ class ChatComponent {
     bold: boolean
     underline: boolean
     strikethrough: boolean
-    extra: ChatComponent[] = []
+    extra: ChatComponent[]
 
     constructor(text: string) {
         this.setColor(ChatFormatting.white)

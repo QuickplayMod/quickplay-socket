@@ -1,12 +1,25 @@
+import SessionContext from './SessionContext'
+
 /**
- * Actions are the core communication unit between the server and the client. They are essentially packets which
- * offer the ability for the web server to instruct the client on what actions to take next.
+ * Actions are the core mechanism behind how Quickplay operates. Whenever the client/user
+ * clicks a button, presses a keybind, receives instructions from the web server, etc.,
+ * Besides some of the current commands system, the client is not able to do any I/O other than what
+ * is available through Actions (eventually, ideally all the Quickplay commands would also run Actions).
  *
- * Action byte structure:
- * ID - 2 bytes
- * Payload length - 4 bytes
- * Payload - Length of prev 4 bytes
- * Repeat prev. 2 for more payload items.
+ * Actions are serializable in a similar format to Minecraft packets, and can be sent over the wire.
+ * The structure is as follows:
+ * When serialized, all Actions must contain at least 2 bytes. These are the first two bytes, which
+ * are the Action's ID. All subsequent bytes are considered the payload. They can be considered arguments
+ * to the Action, and are split up into partitions, each of which is one argument. An argument begins
+ * with the first 4 bytes being the length x of the argument. After those bytes, the next x bytes are
+ * the actual argument. This signature repeats, until there are no more bytes.
+ *
+ * If there are too few bytes in the Action, a RangeError will be thrown. It is possible
+ * for a serialized Action to be valid, but the subsequent execution of the Action to fail if there were
+ * not enough arguments provided in the payload.
+ *
+ * Actions can also be sent to the web server, providing context to actions/events occurring on the client,
+ * such as exceptions, connection status, button presses, etc.
  */
 class Action {
 
@@ -14,24 +27,12 @@ class Action {
     payloadObjs:Buffer[] = []
 
     /**
-     * Decode an Action from a buffer
-     * @param buf {Buffer} Buffer to decode
+     * This method can be called to run the implementation of whatever this Action is
+     * supposed to do. Should be overridden for serverbound actions.
+     * @param ctx The client connection that this action is coming from. Pass null if not relevant.
      */
-    static from (buf: Buffer) : Action {
-        const action = new Action()
-        action.id = buf.readInt16BE()
-        let offset = 2
-        // Loop until the end of the buffer is reached
-        while(buf.byteLength > offset) {
-            // Read length of payload slice
-            const length = buf.readInt32BE(offset)
-            offset += 4
-            // Read payload slice
-            action.addPayload(buf.slice(offset, offset + length))
-            offset += length
-        }
-        return action
-    }
+    // eslint-disable-next-line @typescript-eslint/no-empty-function,@typescript-eslint/no-unused-vars
+    run (ctx: SessionContext) : void {}
 
     /**
      * Build an action into a Buffer from its ID and payload list.
@@ -57,6 +58,31 @@ class Action {
      */
     addPayload (obj: Buffer) : void {
         this.payloadObjs.push(obj)
+    }
+
+    /**
+     * Get an object from the payload at the specified index
+     * @param index {number} Index of the item to get. Should be >= 0 and < payloadObjs.length
+     * @return {Buffer} The payload item, or null if it does not exist.
+     */
+    getPayloadObject(index: number) : Buffer {
+        if(this.payloadObjs.length <= index) {
+            return null
+        }
+        return this.payloadObjs[index]
+    }
+
+    /**
+     * Get an item from the Payload and convert it to a String in UTF-8.
+     * @param index {number} Index of the item to get. Must be >= 0 and < payloadObjs.length
+     * @return {string} Decoded String
+     */
+    getPayloadObjectAsString(index: number) : string {
+        const obj = this.getPayloadObject(index)
+        if(obj == null) {
+            return null
+        }
+        return obj.toString()
     }
 
 }

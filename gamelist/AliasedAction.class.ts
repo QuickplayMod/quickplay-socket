@@ -4,7 +4,6 @@ import pool from '../mysqlPool'
 
 class AliasedAction {
 
-    id: number
     key: string
     availableOn: string[] = []
     protocol = ''
@@ -21,22 +20,14 @@ class AliasedAction {
 
     /**
      * Pull an aliased action from the database and fill in it's serialized fields.
-     * @param idOrKey {number|string} The ID or key of the action to pull.
+     * @param key {string} The key of the action to pull.
      */
-    static async pull(idOrKey: number|string): Promise<AliasedAction> {
-        let query
-
-        if(typeof idOrKey == 'number') {
-            query = 'SELECT * FROM aliased_actions WHERE id=?'
-        } else {
-            query = 'SELECT * FROM aliased_actions WHERE `key`=?'
-        }
-        const res = await pool.query(query, [idOrKey])
+    static async pull(key: string): Promise<AliasedAction> {
+        const res = await pool.query('SELECT * FROM aliased_actions WHERE `key`=?', [key])
         if (res.length <= 0) {
             return null
         }
         const aa = new AliasedAction(res[0].key)
-        aa.id = res[0].id
         aa.availableOn = JSON.parse(res[0].availableOn)
         aa.protocol = res[0].protocol
         aa.action = new Action()
