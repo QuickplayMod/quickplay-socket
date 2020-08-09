@@ -29,11 +29,11 @@ class SetButtonAction extends Action {
         }
 
         this.addPayload(Buffer.from(button.key))
-        this.addPayload(Buffer.from(JSON.stringify(button.availableOn)))
-        this.addPayload(Buffer.from(button.protocol))
-        this.addPayload(Buffer.from(JSON.stringify(button.actions)))
-        this.addPayload(Buffer.from(button.imageURL))
-        this.addPayload(Buffer.from(button.translationKey))
+        this.addPayload(Buffer.from(JSON.stringify(button.availableOn || [])))
+        this.addPayload(Buffer.from(button.protocol || ''))
+        this.addPayload(Buffer.from(JSON.stringify(button.actions || [])))
+        this.addPayload(Buffer.from(button.imageURL || ''))
+        this.addPayload(Buffer.from(button.translationKey || ''))
     }
 }
 

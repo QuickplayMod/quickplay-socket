@@ -57,6 +57,18 @@ export default class ActionResolver {
     ]
 
     /**
+     * Get an action from an ID.
+     * @param id ID of the action to get.
+     * @returns the Action, or null if there is no Action for the specified ID.
+     */
+    static get (id: number) : typeof Action {
+        if(id < 0 || id >= this.actionMap.length) {
+            return null
+        }
+        return this.actionMap[id]
+    }
+
+    /**
      * Decode an Action from a buffer
      * @param buf {Buffer} Buffer to decode
      */
@@ -73,6 +85,24 @@ export default class ActionResolver {
             // Read payload slice
             action.addPayload(buf.slice(offset, offset + length))
             offset += length
+        }
+        return action
+    }
+
+    static async deserialize(json: string): Promise<Action> {
+        const obj = JSON.parse(json)
+        const action = new ActionResolver.actionMap[obj.id]()
+        for(const prop in obj) {
+            if(!obj.hasOwnProperty(prop)) {
+                continue
+            }
+            action[prop] = obj[prop]
+        }
+        // Convert all Buffers from Objects into Buffer instances.
+        if(action.payloadObjs != null) {
+            for(let i = 0; i < action.payloadObjs.length; i++) {
+                action.payloadObjs[i] = Buffer.from((action.payloadObjs[i] as unknown as {data: number[]}).data)
+            }
         }
         return action
     }

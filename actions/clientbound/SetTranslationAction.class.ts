@@ -28,7 +28,7 @@ class SetTranslationAction extends Action {
 
         this.addPayload(Buffer.from(key))
         this.addPayload(Buffer.from(lang))
-        this.addPayload(Buffer.from(val))
+        this.addPayload(Buffer.from(val || ''))
     }
 }
 

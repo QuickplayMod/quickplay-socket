@@ -2,6 +2,7 @@ import ChatComponent from '../chat-components/ChatComponent.class'
 import SendChatComponentAction from './clientbound/SendChatComponentAction.class'
 import SendChatCommandAction from './clientbound/SendChatCommandAction.class'
 import Message from '../chat-components/Message.class'
+import Action from "./Action.class";
 import WebSocket = require('ws');
 
 export default class SessionContext {
@@ -37,6 +38,17 @@ export default class SessionContext {
             return
         }
         const action = new SendChatCommandAction(command)
+        this.conn.send(action.build())
+    }
+
+    /**
+     * Send an Action to the client.
+     * @param action {Action} Action to send. If null, nothing is sent.
+     */
+    sendAction(action: Action) {
+        if(action == null) {
+            return
+        }
         this.conn.send(action.build())
     }
 }

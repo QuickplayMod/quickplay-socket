@@ -27,8 +27,8 @@ class SetAliasedActionAction extends Action {
         }
 
         this.addPayload(Buffer.from(aliasedAction.key))
-        this.addPayload(Buffer.from(JSON.stringify(aliasedAction.availableOn)))
-        this.addPayload(Buffer.from(aliasedAction.protocol))
+        this.addPayload(Buffer.from(JSON.stringify(aliasedAction.availableOn || [])))
+        this.addPayload(Buffer.from(aliasedAction.protocol || ''))
         this.addPayload(aliasedAction.action.build())
     }
 }

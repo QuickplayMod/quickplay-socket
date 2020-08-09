@@ -5,59 +5,49 @@ import Screen from './gamelist/Screen.class'
 import pool from './mysqlPool'
 import SessionContext from './actions/SessionContext'
 import ActionResolver from './actions/ActionResolver'
-import * as Redis from 'ioredis'
+import {getRedis} from './redis'
+import * as IORedis from 'ioredis'
 
-const redis = new Redis(6379, 'redis')
-const redisSubscriber = redis.duplicate()
+let redis : IORedis.Redis
 
-let redisConnected = false
-let redisPubSubConnected = false
+(async () => {
+    redis = await getRedis()
+    await begin()
+})()
 
-redisSubscriber.on('connect', async () => {
-    console.log('Redis sub connected')
-    await redisSubscriber.subscribe('conn-notif')
-
-    redisSubscriber.on('message', (channel, msg) => {
-        console.log(channel, ':', msg)
-    })
-
-    // Do not begin program until both redis are connected
-    redisPubSubConnected = true
-    if(redisConnected) {
-        await begin()
-    }
-})
-redis.on('connect', async () => {
-    console.log('Redis connected')
-    await redis.set('connections', 0)
-
-    // Do not begin program until both redis are connected
-    redisConnected = true
-    if(redisPubSubConnected) {
-        await begin()
-    }
-})
-
+// TODO this function should probably be removed or used somewhere else.
+//  It does not make sense to repopulate Redis every time an instance restarts.
 async function populate() {
     await redis.del('aliasedActions')
-    const actionResponse = await pool.query('SELECT `key` FROM aliased_actions;')
+    const [actionResponse] = await pool.query('SELECT `key` FROM aliased_actions;')
     for(let i = 0; i < actionResponse.length; i++) {
         const res = await AliasedAction.pull(actionResponse[i].key)
         await redis.hset('aliasedActions', actionResponse[i].key, JSON.stringify(res))
     }
 
     await redis.del('buttons')
-    const buttonResponse = await pool.query('SELECT `key` FROM buttons;')
+    const [buttonResponse] = await pool.query('SELECT `key` FROM buttons;')
     for(let i = 0; i < buttonResponse.length; i++) {
         const res = await Button.pull(buttonResponse[i].key)
         await redis.hset('buttons', buttonResponse[i].key, JSON.stringify(res))
     }
 
     await redis.del('screens')
-    const screenResponse = await pool.query('SELECT `key` FROM screens;')
+    const [screenResponse] = await pool.query('SELECT `key` FROM screens;')
     for(let i = 0; i < screenResponse.length; i++) {
         const res = await Screen.pull(screenResponse[i].key)
         await redis.hset('screens', screenResponse[i].key, JSON.stringify(res))
+    }
+
+    // Delete all current language values
+    const [languages] = await pool.query('SELECT distinct(lang) from translations')
+    for(let i = 0; i < languages.length; i++) {
+        await redis.del('lang:' + languages[i].lang)
+    }
+    // Insert all language values back into redis
+    const [translationResponse] = await pool.query('SELECT * from translations;')
+    for(let i = 0; i < translationResponse.length; i++) {
+        await redis.hset('lang:' + translationResponse[i].lang, translationResponse[i].key, translationResponse[i].value)
     }
 }
 
@@ -76,7 +66,6 @@ async function begin() {
         (conn as unknown as {ctx: SessionContext}).ctx = ctx
 
         conn.on('pong', () => {
-            console.log('pong')
             ctx.lastPong = new Date().getTime()
         })
 
@@ -93,6 +82,11 @@ async function begin() {
             await redis.publish('conn-notif', connCount.toString())
         })
 
+        conn.on('error', async function (err) {
+            console.warn(err)
+            conn.terminate()
+        })
+
         const connCount = await redis.incr('connections')
         await redis.publish('conn-notif', connCount.toString())
     })
@@ -102,16 +96,14 @@ async function begin() {
         const now = new Date().getTime()
         wss.clients.forEach((conn) => {
             if((conn as unknown as {ctx: SessionContext}).ctx.lastPong < now - pingInterval * 2) {
-                console.log('Connection lost')
                 conn.terminate()
                 return
             }
             conn.ping()
-            console.log('ping')
         })
     }, pingInterval)
 
     wss.on('error', async function (err) {
-        console.log('Error', err)
+        console.warn(err)
     })
 }

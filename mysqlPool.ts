@@ -1,4 +1,4 @@
-import * as mysql from 'mysql'
+import * as mysql from 'mysql2/promise'
 
 export default mysql.createPool({
     host : process.env.DB_HOST,

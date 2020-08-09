@@ -31,12 +31,13 @@ class SetScreenAction extends Action {
         }
 
         this.addPayload(Buffer.from(screen.key))
-        this.addPayload(Buffer.from(JSON.stringify(screen.availableOn)))
-        this.addPayload(Buffer.from(screen.protocol))
-        this.addPayload(Buffer.from(JSON.stringify(screen.buttons)))
-        this.addPayload(Buffer.from(JSON.stringify(screen.backButtonActions)))
-        this.addPayload(Buffer.from(screen.translationKey))
-        this.addPayload(Buffer.from(screen.imageURL))
+        this.addPayload(Buffer.from(screen.screenType))
+        this.addPayload(Buffer.from(JSON.stringify(screen.availableOn || [])))
+        this.addPayload(Buffer.from(screen.protocol || ''))
+        this.addPayload(Buffer.from(JSON.stringify(screen.buttons || [])))
+        this.addPayload(Buffer.from(JSON.stringify(screen.backButtonActions || [])))
+        this.addPayload(Buffer.from(screen.translationKey || ''))
+        this.addPayload(Buffer.from(screen.imageURL || ''))
     }
 }
 
