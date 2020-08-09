@@ -2,7 +2,7 @@ import ChatComponent from '../chat-components/ChatComponent.class'
 import SendChatComponentAction from './clientbound/SendChatComponentAction.class'
 import SendChatCommandAction from './clientbound/SendChatCommandAction.class'
 import Message from '../chat-components/Message.class'
-import Action from "./Action.class";
+import Action from './Action.class'
 import WebSocket = require('ws');
 
 export default class SessionContext {

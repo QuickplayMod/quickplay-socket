@@ -1,6 +1,6 @@
 import Action from '../actions/Action.class'
 import pool from '../mysqlPool'
-import ActionResolver from "../actions/ActionResolver";
+import ActionResolver from '../actions/ActionResolver'
 
 
 class AliasedAction {
