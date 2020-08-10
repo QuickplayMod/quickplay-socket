@@ -3,6 +3,9 @@ import Action from '../Action.class'
 /**
  * ID: 6
  * Send a command to the server the client is connected to.
+ *
+ * Payload Order:
+ * Chat command
  */
 class SendChatCommandAction extends Action {
 

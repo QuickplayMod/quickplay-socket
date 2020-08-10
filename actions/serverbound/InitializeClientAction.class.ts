@@ -70,17 +70,18 @@ class InitializeClientAction extends Action {
         this.addPayload(Buffer.from(clientVersion))
     }
 
-
     run(ctx: SessionContext): void {
         if(ctx == null) {
             return
         }
-        ctx.data.uuid = this.getPayloadObjectAsString(0)
-        ctx.data.userAgent = this.getPayloadObjectAsString(1).toLowerCase()
+        ctx.data.uuid = this.getPayloadObjectAsString(0)?.replace(/-/g, '')
+        ctx.data.userAgent = this.getPayloadObjectAsString(1)?.toLowerCase()
         ctx.data.qpVersion = this.getPayloadObjectAsString(2)
-        ctx.data.language = this.getPayloadObjectAsString(3).toLowerCase()
+        ctx.data.language = this.getPayloadObjectAsString(3)?.toLowerCase()
         ctx.data.mcVersion = this.getPayloadObjectAsString(4)
         ctx.data.clientVersion = this.getPayloadObjectAsString(5)
+        ctx.authenticate()
+        // Send screen data
         this.sendScreenData(ctx)
     }
 

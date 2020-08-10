@@ -4,6 +4,9 @@ import Message from '../../chat-components/Message.class'
 /**
  * ID: 3
  * Send a Quickplay chat message to the client's chat.
+ *
+ * Payload Order:
+ * Chat component
  */
 class SendChatComponentAction extends Action {
 

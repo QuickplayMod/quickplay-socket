@@ -80,6 +80,10 @@ async function begin() {
         conn.on('close', async () => {
             const connCount = await redis.decr('connections')
             await redis.publish('conn-notif', connCount.toString())
+            if(ctx.authedResetTimeout != null) {
+                clearTimeout(ctx.authedResetTimeout)
+                ctx.authedResetTimeout = null
+            }
         })
 
         conn.on('error', async function (err) {
@@ -91,6 +95,7 @@ async function begin() {
         await redis.publish('conn-notif', connCount.toString())
     })
 
+    // Ping clients every 30 seconds; Terminate clients which haven't responded in 60 seconds
     const pingInterval = 30000
     setInterval(() => {
         const now = new Date().getTime()

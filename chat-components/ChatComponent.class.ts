@@ -1,6 +1,8 @@
 import ChatFormatting from './ChatFormatting.enum'
 import ClickEvent from './ClickEvent.class'
 import HoverEvent from './HoverEvent.class'
+import {getRedis} from '../redis'
+import {sprintf} from 'sprintf-js'
 
 class ChatComponent {
 
@@ -18,6 +20,21 @@ class ChatComponent {
     constructor(text: string) {
         this.setColor(ChatFormatting.white)
         this.text = text
+    }
+
+    static async translate(lang: string, key: string, ... args: string[]) : Promise<ChatComponent> {
+        const redis = await getRedis()
+        if(!lang || !await redis.exists('lang:' + lang.toLowerCase())) {
+            lang = 'en_us'
+        }
+        let res = await redis.hget('lang:' + lang, key)
+        if(res == null && lang != 'en_us') {
+            res = await(redis.hget('lang:en_us', key))
+        }
+        if(res == null) {
+            return new ChatComponent(key)
+        }
+        return new ChatComponent(sprintf(res, ...args))
     }
 
     setColor(color: string): ChatComponent {

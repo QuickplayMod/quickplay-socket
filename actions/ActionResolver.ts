@@ -24,6 +24,9 @@ import LanguageChangedAction from './serverbound/LanguageChangedAction.class'
 import ServerJoinedAction from './serverbound/ServerJoinedAction.class'
 import ServerLeftAction from './serverbound/ServerLeftAction.class'
 import InitializeClientAction from './serverbound/InitializeClientAction.class'
+import AuthBeginHandshakeAction from './clientbound/AuthBeginHandshakeAction.class'
+import AuthEndHandshakeAction from './serverbound/AuthEndHandshakeAction.class'
+import AuthCompleteAction from './clientbound/AuthCompleteAction.class'
 
 export default class ActionResolver {
 
@@ -53,7 +56,10 @@ export default class ActionResolver {
         LanguageChangedAction,
         ServerJoinedAction,
         ServerLeftAction,
-        InitializeClientAction
+        InitializeClientAction,
+        AuthBeginHandshakeAction,
+        AuthEndHandshakeAction,
+        AuthCompleteAction
     ]
 
     /**

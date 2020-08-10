@@ -3,7 +3,56 @@ import SendChatComponentAction from './clientbound/SendChatComponentAction.class
 import SendChatCommandAction from './clientbound/SendChatCommandAction.class'
 import Message from '../chat-components/Message.class'
 import Action from './Action.class'
+import AuthBeginHandshakeAction from './clientbound/AuthBeginHandshakeAction.class'
+import ChatFormattingEnum from '../chat-components/ChatFormatting.enum'
+import mysqlPool from '../mysqlPool'
+import * as crypto from 'crypto'
 import WebSocket = require('ws');
+import Timer = NodeJS.Timer;
+
+/**
+ * Generate a handshake token and add it to the database for a specific session context.
+ * Returns null if the user has initiated authentication within the past 5 seconds.
+ * @param ctx {SessionContext} Session context to generate the token for.
+ */
+async function generateHandshakeToken(ctx: SessionContext) : Promise<string> {
+    // Handshakes can only be generated every 5 seconds per user
+    let res
+    try {
+        [res] = await mysqlPool.query('SELECT COUNT(id) FROM sessions WHERE uuid=? AND created > NOW() - INTERVAL 5 SECOND',
+            [ctx.data.uuid])
+    } catch(e) {
+        console.error(e)
+        ctx.sendChatComponentMessage(new Message(
+            new ChatComponent('Quickplay authentication failed: Something went wrong! Try again in a few seconds.')
+                .setColor(ChatFormattingEnum.red)
+        ))
+        return null
+    }
+    if(res[0]['COUNT(id)'] > 0) {
+        ctx.sendChatComponentMessage(new Message(
+            new ChatComponent('Quickplay authentication failed: You\'re doing that too fast! Try again in a few seconds.')
+                .setColor(ChatFormattingEnum.red)
+        ))
+        return null
+    }
+
+    const bytes = crypto.randomBytes(32)
+    const token = bytes.toString('hex')
+
+    try {
+        await mysqlPool.query('INSERT INTO sessions (handshake, uuid) VALUES (?,?)', [token, ctx.data.uuid])
+    } catch(e) {
+        console.error(e)
+        ctx.sendChatComponentMessage(new Message(
+            new ChatComponent('Quickplay authentication failed: Something went wrong! Try again in a few seconds.')
+                .setColor(ChatFormattingEnum.red)
+        ))
+        return null
+    }
+
+    return token
+}
 
 export default class SessionContext {
 
@@ -14,6 +63,33 @@ export default class SessionContext {
     conn: WebSocket
     data: Record<string, unknown> = {}
     lastPong: number
+    authed = false
+    authedResetTimeout: Timer = null
+
+    /**
+     * Initiate authentication with the client. This function generates a handshake token for the user and
+     * sends a new AuthBeginHandshakeAction. Authentication is periodically redone, specifically once every 3 hours.
+     */
+    async authenticate() : Promise<void> {
+        this.authed = false
+        if(this.authedResetTimeout != null) {
+            clearTimeout(this.authedResetTimeout)
+            this.authedResetTimeout = null
+        }
+        try {
+            const token = await generateHandshakeToken(this)
+            if(token == null) {
+                return
+            }
+            this.sendAction(new AuthBeginHandshakeAction(token))
+        } catch(e) {
+            console.error(e)
+            this.sendChatComponentMessage(new Message(
+                new ChatComponent('Quickplay authentication failed: Something went wrong! Try again in a few seconds.')
+                    .setColor(ChatFormattingEnum.red)
+            ))
+        }
+    }
 
     /**
      * Send a chat component to the user's chat via a {@link SendChatComponentAction}
@@ -45,7 +121,7 @@ export default class SessionContext {
      * Send an Action to the client.
      * @param action {Action} Action to send. If null, nothing is sent.
      */
-    sendAction(action: Action) {
+    sendAction(action: Action) : void {
         if(action == null) {
             return
         }
