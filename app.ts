@@ -1,61 +1,43 @@
 import * as WebSocket from 'ws'
-import Button from './gamelist/Button.class'
-import AliasedAction from './gamelist/AliasedAction.class'
-import Screen from './gamelist/Screen.class'
-import pool from './mysqlPool'
-import SessionContext from './actions/SessionContext'
-import ActionResolver from './actions/ActionResolver'
 import {getRedis} from './redis'
 import * as IORedis from 'ioredis'
+import {
+    ActionBus,
+    AuthEndHandshakeAction,
+    InitializeClientAction,
+    MigrateKeybindsAction,
+    Resolver
+} from '@quickplaymod/quickplay-actions-js'
+import StateAggregator from './StateAggregator'
+import SessionContext from './SessionContext'
+import MigrateKeybindsSubscriber from './subscribers/MigrateKeybindsSubscriber'
+import AuthEndHandshakeSubscriber from './subscribers/AuthEndHandshakeSubscriber'
+import InitializeClientSubscriber from './subscribers/InitializeClientSubscriber'
 
 let redis : IORedis.Redis
+let actionBus : ActionBus
 
 (async () => {
     redis = await getRedis()
     await begin()
 })()
 
-// TODO this function should probably be removed or used somewhere else.
-//  It does not make sense to repopulate Redis every time an instance restarts.
-async function populate() {
-    await redis.del('aliasedActions')
-    const [actionResponse] = await pool.query('SELECT `key` FROM aliased_actions;')
-    for(let i = 0; i < actionResponse.length; i++) {
-        const res = await AliasedAction.pull(actionResponse[i].key)
-        await redis.hset('aliasedActions', actionResponse[i].key, JSON.stringify(res))
-    }
-
-    await redis.del('buttons')
-    const [buttonResponse] = await pool.query('SELECT `key` FROM buttons;')
-    for(let i = 0; i < buttonResponse.length; i++) {
-        const res = await Button.pull(buttonResponse[i].key)
-        await redis.hset('buttons', buttonResponse[i].key, JSON.stringify(res))
-    }
-
-    await redis.del('screens')
-    const [screenResponse] = await pool.query('SELECT `key` FROM screens;')
-    for(let i = 0; i < screenResponse.length; i++) {
-        const res = await Screen.pull(screenResponse[i].key)
-        await redis.hset('screens', screenResponse[i].key, JSON.stringify(res))
-    }
-
-    // Delete all current language values
-    const [languages] = await pool.query('SELECT distinct(lang) from translations')
-    for(let i = 0; i < languages.length; i++) {
-        await redis.del('lang:' + languages[i].lang)
-    }
-    // Insert all language values back into redis
-    const [translationResponse] = await pool.query('SELECT * from translations;')
-    for(let i = 0; i < translationResponse.length; i++) {
-        await redis.hset('lang:' + translationResponse[i].lang, translationResponse[i].key, translationResponse[i].value)
-    }
-}
-
+/**
+ * Begin the websocket server.
+ */
 async function begin() {
+    // Create new action bus and add all subscriptions
+    actionBus = new ActionBus()
+    actionBus.subscribe(MigrateKeybindsAction, new MigrateKeybindsSubscriber())
+    actionBus.subscribe(AuthEndHandshakeAction, new AuthEndHandshakeSubscriber())
+    actionBus.subscribe(InitializeClientAction, new InitializeClientSubscriber())
+
+    // Populate redis
     console.log('Beginning population.')
-    await populate()
+    await StateAggregator.populate()
     console.log('Population complete. Initializing on port 80.')
 
+    // Create websocket server
     const wss = new WebSocket.Server({ port: 80 })
     wss.on('connection', async function connection(conn) {
 
@@ -73,8 +55,8 @@ async function begin() {
             if(!(message instanceof Buffer)) {
                 return
             }
-            const action = ActionResolver.from(message)
-            action.run(ctx)
+            const action = Resolver.from(message)
+            actionBus.publish(action, ctx)
         })
 
         conn.on('close', async () => {

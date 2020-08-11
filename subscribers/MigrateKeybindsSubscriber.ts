@@ -1,38 +1,34 @@
-import Action from '../Action.class'
+import {
+    Action,
+    Button,
+    ChatComponent,
+    ChatFormatting,
+    Message,
+    SetKeybindsAction,
+    Subscriber
+} from '@quickplaymod/quickplay-actions-js'
 import SessionContext from '../SessionContext'
-import SetKeybindsAction from '../clientbound/SetKeybindsAction.class'
-import Message from '../../chat-components/Message.class'
-import ChatComponent from '../../chat-components/ChatComponent.class'
-import ChatFormattingEnum from '../../chat-components/ChatFormatting.enum'
-import {getRedis} from '../../redis'
-import Button from "../../gamelist/Button.class";
+import {getRedis} from '../redis'
 
-/**
- * SERVERBOUND - Server should not instantiate.
- * ID: 21
- * Send the list keybinds to the server so the server can respond with a migrated keybinds list.
- * This is currently only used to migrate keybinds from pre-2.1.0 to post-2.1.0.
- * @see SetKeybindsAction
- *
- * Payload Order:
- * valid JSON that goes into keybinds.json FROM QP 2.0.3 or earlier.
- */
-class MigrateKeybindsAction extends Action {
+class MigrateKeybindsSubscriber extends Subscriber {
 
-    /**
-     * Create a new MigrateKeybindsAction.
-     * @param keybinds {Record<string, ?>[]} New keybinds to serialize and send to the server.
-     */
-    constructor (keybinds?: Record<string, unknown>[]) {
-        super()
-        this.id = 21
+    async run(action: Action, ctx: SessionContext): Promise<void> {
+        try {
+            this.convert(action, ctx.data.language as string).then((newAction) => {
+                ctx.sendAction(newAction)
+                ctx.sendChatComponentMessage(new Message(new ChatComponent(
+                    'Migration complete!')
+                    .setColor(ChatFormatting.green), true))
+            }).catch(e => {
+                throw e
+            })
 
-        // Don't add payload if the first payload item wasn't provided
-        if(keybinds == undefined) {
-            return
+        } catch(e) {
+            console.log(e)
+            ctx.sendChatComponentMessage(new Message(new ChatComponent(
+                'Something went wrong while migrating your keybinds. Sorry for the inconvenience!')
+                .setColor(ChatFormatting.red), true))
         }
-
-        this.addPayload(Buffer.from(JSON.stringify(keybinds)))
     }
 
     /**
@@ -65,20 +61,21 @@ class MigrateKeybindsAction extends Action {
 
     /**
      * Convert the old keybinds structure into the new keybinds structure
+     * @param incoming {Action} The incoming action which triggered this subscription.
      * @param lang {string} The language the client is using. For simplicity, we only search for
      * translation matches for the user's current language, as this will cover 99% of users. To search all
      * languages would be much more complex in terms of runtime (O(ltbk) where l is the total number of languages,
      * t is the total number of translations, b is the total number of buttons, and k is the total number of keybinds,
      * as opposed to O(tbk) with current language).
      */
-    async convert(lang: string) : Promise<SetKeybindsAction> {
+    async convert(incoming: Action, lang: string) : Promise<SetKeybindsAction> {
         // Find translations with the matching name
         // Get the key of that translation
         // Find the first button that is using that translation key
         // Set that button's key as the target button of the keybind
 
         const start = new Date()
-        const keybinds = JSON.parse(this.getPayloadObjectAsString(0))
+        const keybinds = JSON.parse(incoming.getPayloadObjectAsString(0))
         if(!Array.isArray(keybinds)) {
             return new SetKeybindsAction([])
         }
@@ -141,26 +138,6 @@ class MigrateKeybindsAction extends Action {
         console.log('Conversion time:', end.getTime() - start.getTime())
         return new SetKeybindsAction(keybinds)
     }
-
-
-    run(ctx: SessionContext) : void {
-        try {
-            this.convert(ctx.data.language as string).then((action) => {
-                ctx.sendAction(action)
-                ctx.sendChatComponentMessage(new Message(new ChatComponent(
-                    'Migration complete!')
-                    .setColor(ChatFormattingEnum.green), true))
-            }).catch(e => {
-                throw e
-            })
-
-        } catch(e) {
-            console.log(e)
-            ctx.sendChatComponentMessage(new Message(new ChatComponent(
-                'Something went wrong while migrating your keybinds. Sorry for the inconvenience!')
-                .setColor(ChatFormattingEnum.red), true))
-        }
-    }
 }
 
-export default MigrateKeybindsAction
+export default MigrateKeybindsSubscriber

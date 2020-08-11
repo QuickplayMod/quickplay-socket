@@ -1,12 +1,14 @@
-import ChatComponent from '../chat-components/ChatComponent.class'
-import SendChatComponentAction from './clientbound/SendChatComponentAction.class'
-import SendChatCommandAction from './clientbound/SendChatCommandAction.class'
-import Message from '../chat-components/Message.class'
-import Action from './Action.class'
-import AuthBeginHandshakeAction from './clientbound/AuthBeginHandshakeAction.class'
-import ChatFormattingEnum from '../chat-components/ChatFormatting.enum'
-import mysqlPool from '../mysqlPool'
 import * as crypto from 'crypto'
+import {
+    Action,
+    AuthBeginHandshakeAction,
+    ChatComponent,
+    ChatFormatting,
+    Message,
+    SendChatCommandAction,
+    SendChatComponentAction
+} from '@quickplaymod/quickplay-actions-js'
+import mysqlPool from './mysqlPool'
 import WebSocket = require('ws');
 import Timer = NodeJS.Timer;
 
@@ -25,14 +27,14 @@ async function generateHandshakeToken(ctx: SessionContext) : Promise<string> {
         console.error(e)
         ctx.sendChatComponentMessage(new Message(
             new ChatComponent('Quickplay authentication failed: Something went wrong! Try again in a few seconds.')
-                .setColor(ChatFormattingEnum.red)
+                .setColor(ChatFormatting.red)
         ))
         return null
     }
     if(res[0]['COUNT(id)'] > 0) {
         ctx.sendChatComponentMessage(new Message(
             new ChatComponent('Quickplay authentication failed: You\'re doing that too fast! Try again in a few seconds.')
-                .setColor(ChatFormattingEnum.red)
+                .setColor(ChatFormatting.red)
         ))
         return null
     }
@@ -46,7 +48,7 @@ async function generateHandshakeToken(ctx: SessionContext) : Promise<string> {
         console.error(e)
         ctx.sendChatComponentMessage(new Message(
             new ChatComponent('Quickplay authentication failed: Something went wrong! Try again in a few seconds.')
-                .setColor(ChatFormattingEnum.red)
+                .setColor(ChatFormatting.red)
         ))
         return null
     }
@@ -86,7 +88,7 @@ export default class SessionContext {
             console.error(e)
             this.sendChatComponentMessage(new Message(
                 new ChatComponent('Quickplay authentication failed: Something went wrong! Try again in a few seconds.')
-                    .setColor(ChatFormattingEnum.red)
+                    .setColor(ChatFormatting.red)
             ))
         }
     }
@@ -114,7 +116,7 @@ export default class SessionContext {
             return
         }
         const action = new SendChatCommandAction(command)
-        this.conn.send(action.build())
+        this.sendAction(action)
     }
 
     /**

@@ -23,11 +23,15 @@ function getRedis () : Promise<IORedis.Redis> {
         let resolved = false
         redis.on('connect', () => {
             resolve(redis)
+            redisConnected = true
             resolved = true
         })
-        if(redisConnected && !resolved) {
-            resolve(redis)
-        }
+        // Push code to the bottom of the event loop
+        setTimeout(() => {
+            if(redisConnected && !resolved) {
+                resolve(redis)
+            }
+        }, 0)
     })
 }
 
