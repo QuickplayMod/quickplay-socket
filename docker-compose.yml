@@ -3,7 +3,7 @@ services:
   web:
     depends_on:
       - db
-    image: robere2/quickplay-socket
+    image: quickplaymod/quickplay-socket
     ports:
       - "54678:80"
     restart: unless-stopped

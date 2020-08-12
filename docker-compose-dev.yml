@@ -4,7 +4,7 @@ services:
     depends_on:
       - db
       - redis
-    image: robere2/quickplay-socket
+    image: quickplaymod/quickplay-socket
     ports:
       - "54678:80"
       - "5859:5859"
