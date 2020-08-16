@@ -1,6 +1,6 @@
 version: '3.8'
 services:
-  web:
+  socket:
     depends_on:
       - db
     image: quickplaymod/quickplay-socket

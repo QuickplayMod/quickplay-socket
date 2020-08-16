@@ -3,7 +3,9 @@ import {getRedis} from './redis'
 import * as IORedis from 'ioredis'
 import {
     ActionBus,
-    AuthEndHandshakeAction,
+    AuthGoogleEndHandshakeAction,
+    AuthMojangEndHandshakeAction,
+    AuthReestablishAuthedConnectionAction,
     InitializeClientAction,
     MigrateKeybindsAction,
     Resolver
@@ -11,8 +13,9 @@ import {
 import StateAggregator from './StateAggregator'
 import SessionContext from './SessionContext'
 import MigrateKeybindsSubscriber from './subscribers/MigrateKeybindsSubscriber'
-import AuthEndHandshakeSubscriber from './subscribers/AuthEndHandshakeSubscriber'
 import InitializeClientSubscriber from './subscribers/InitializeClientSubscriber'
+import AuthEndHandshakeSubscriber from './subscribers/AuthEndHandshakeSubscriber'
+import AuthReestablishAuthedConnectionSubscriber from './subscribers/AuthReestablishAuthedConnectionSubscriber'
 
 let redis : IORedis.Redis
 let actionBus : ActionBus
@@ -29,8 +32,11 @@ async function begin() {
     // Create new action bus and add all subscriptions
     actionBus = new ActionBus()
     actionBus.subscribe(MigrateKeybindsAction, new MigrateKeybindsSubscriber())
-    actionBus.subscribe(AuthEndHandshakeAction, new AuthEndHandshakeSubscriber())
+    const endAuthSub = new AuthEndHandshakeSubscriber()
+    actionBus.subscribe(AuthMojangEndHandshakeAction, endAuthSub)
+    actionBus.subscribe(AuthGoogleEndHandshakeAction, endAuthSub)
     actionBus.subscribe(InitializeClientAction, new InitializeClientSubscriber())
+    actionBus.subscribe(AuthReestablishAuthedConnectionAction, new AuthReestablishAuthedConnectionSubscriber())
 
     // Populate redis
     console.log('Beginning population.')

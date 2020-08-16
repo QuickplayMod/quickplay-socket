@@ -21,8 +21,8 @@ async function generateHandshakeToken(ctx: SessionContext) : Promise<string> {
     // Handshakes can only be generated every 5 seconds per user
     let res
     try {
-        [res] = await mysqlPool.query('SELECT COUNT(id) FROM sessions WHERE uuid=? AND created > NOW() - INTERVAL 5 SECOND',
-            [ctx.data.uuid])
+        [res] = await mysqlPool.query('SELECT COUNT(id) FROM sessions WHERE user=? AND created > NOW() - INTERVAL 5 SECOND',
+            [ctx.accountId])
     } catch(e) {
         console.error(e)
         ctx.sendChatComponentMessage(new Message(
@@ -43,7 +43,7 @@ async function generateHandshakeToken(ctx: SessionContext) : Promise<string> {
     const token = bytes.toString('hex')
 
     try {
-        await mysqlPool.query('INSERT INTO sessions (handshake, uuid) VALUES (?,?)', [token, ctx.data.uuid])
+        await mysqlPool.query('INSERT INTO sessions (handshake, user) VALUES (?,?)', [token, ctx.accountId])
     } catch(e) {
         console.error(e)
         ctx.sendChatComponentMessage(new Message(
@@ -66,6 +66,7 @@ export default class SessionContext {
     data: Record<string, unknown> = {}
     lastPong: number
     authed = false
+    accountId = -1
     authedResetTimeout: Timer = null
 
     /**
