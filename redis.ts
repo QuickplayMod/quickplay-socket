@@ -1,7 +1,7 @@
 import * as Redis from 'ioredis'
 import IORedis = require('ioredis');
 
-const redis = new Redis(6379, 'redis')
+const redis = new Redis(6379, process.env.REDIS_HOST)
 const redisSubscriber = redis.duplicate()
 
 let redisConnected = false

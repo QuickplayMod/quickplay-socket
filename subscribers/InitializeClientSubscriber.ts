@@ -60,8 +60,8 @@ class InitializeClientSubscriber extends Subscriber {
         if(id == -1) {
             // The Google ID received isn't in the database, so we can't identify them, OR
             // The Mojang ID was malformed.
-            console.log('Auth failed: Google ID or Mojang UUID provided is not linked to any account.' +
-                ' ID:', identifier, 'ID type:', identifierType)
+            console.log('Auth failed: Google ID or Mojang UUID provided is not linked to any account.',
+                'ID:', identifier, 'ID type:', identifierType)
             ctx.sendAction(new AuthFailedAction())
             return
         }
