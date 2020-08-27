@@ -155,7 +155,7 @@ class InitializeClientSubscriber extends Subscriber {
             ctx.sendAction(new SetButtonAction(parsedButton))
         }
         for(const screen in screens) {
-            if(!screens.hasOwnProperty(screen)) {
+            if(!screens.hasOwnProperty(screen) || !screens[screen]) {
                 continue
             }
             const parsedScreen = await Screen.deserialize(screens[screen])

@@ -3,9 +3,17 @@ import {getRedis} from './redis'
 import * as IORedis from 'ioredis'
 import {
     ActionBus,
+    AlterAliasedActionAction,
+    AlterButtonAction,
+    AlterScreenAction,
+    AlterTranslationAction,
     AuthGoogleEndHandshakeAction,
     AuthMojangEndHandshakeAction,
     AuthReestablishAuthedConnectionAction,
+    DeleteAliasedActionAction,
+    DeleteButtonAction,
+    DeleteScreenAction,
+    DeleteTranslationAction,
     InitializeClientAction,
     MigrateKeybindsAction,
     Resolver
@@ -16,6 +24,14 @@ import MigrateKeybindsSubscriber from './subscribers/MigrateKeybindsSubscriber'
 import InitializeClientSubscriber from './subscribers/InitializeClientSubscriber'
 import AuthEndHandshakeSubscriber from './subscribers/AuthEndHandshakeSubscriber'
 import AuthReestablishAuthedConnectionSubscriber from './subscribers/AuthReestablishAuthedConnectionSubscriber'
+import AlterScreenSubscriber from './subscribers/AlterScreenSubscriber'
+import DeleteScreenSubscriber from './subscribers/DeleteScreenSubscriber'
+import AlterButtonSubscriber from './subscribers/AlterButtonSubscriber'
+import DeleteButtonSubscriber from './subscribers/DeleteButtonSubscriber'
+import DeleteAliasedActionSubscriber from './subscribers/DeleteAliasedActionSubscriber'
+import AlterAliasedActionSubscriber from './subscribers/AlterAliasedActionSubscriber'
+import AlterTranslationSubscriber from './subscribers/AlterTranslationSubscriber'
+import DeleteTranslationSubscriber from './subscribers/DeleteTranslationSubscriber'
 
 let redis : IORedis.Redis
 let actionBus : ActionBus
@@ -37,6 +53,14 @@ async function begin() {
     actionBus.subscribe(AuthGoogleEndHandshakeAction, endAuthSub)
     actionBus.subscribe(InitializeClientAction, new InitializeClientSubscriber())
     actionBus.subscribe(AuthReestablishAuthedConnectionAction, new AuthReestablishAuthedConnectionSubscriber())
+    actionBus.subscribe(AlterScreenAction, new AlterScreenSubscriber())
+    actionBus.subscribe(DeleteScreenAction, new DeleteScreenSubscriber())
+    actionBus.subscribe(AlterButtonAction, new AlterButtonSubscriber())
+    actionBus.subscribe(DeleteButtonAction, new DeleteButtonSubscriber())
+    actionBus.subscribe(AlterAliasedActionAction, new AlterAliasedActionSubscriber())
+    actionBus.subscribe(DeleteAliasedActionAction, new DeleteAliasedActionSubscriber())
+    actionBus.subscribe(AlterTranslationAction, new AlterTranslationSubscriber())
+    actionBus.subscribe(DeleteTranslationAction, new DeleteTranslationSubscriber())
 
     // Populate redis
     console.log('Beginning population.')

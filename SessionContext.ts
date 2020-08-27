@@ -69,6 +69,14 @@ export default class SessionContext {
     accountId = -1
     authedResetTimeout: Timer = null
 
+    async getIsAdmin() : Promise<boolean> {
+        const [res] = await mysqlPool.query('SELECT is_admin FROM accounts WHERE id=?', [this.accountId])
+        if(res.length <= 0) {
+            this.authed = false
+        }
+        return !!res[0].is_admin
+    }
+
     /**
      * Initiate authentication with the client. This function generates a handshake token for the user and
      * sends a new AuthBeginHandshakeAction. Authentication is periodically redone, specifically once every 3 hours.

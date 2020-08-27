@@ -84,6 +84,7 @@ class StateAggregator {
         }
         const aa = new AliasedAction(res[0].key)
         aa.availableOn = res[0].availableOn
+        aa.adminOnly = res[0].adminOnly
         aa.action = new (Resolver.get(res[0].action))()
         const args = res[0].args || []
         for(let i = 0; i < args.length; i++) {
@@ -104,6 +105,7 @@ class StateAggregator {
         }
         const b = new Button(res[0].key)
         b.availableOn = res[0].availableOn
+        b.adminOnly = res[0].adminOnly
         b.imageURL = res[0].imageURL
         b.translationKey = res[0].translationKey
         const actions = res[0].actions || []
@@ -125,14 +127,15 @@ class StateAggregator {
         }
         const s = new Screen(res[0].key, res[0].screenType)
         s.availableOn = res[0].availableOn
+        s.adminOnly = res[0].adminOnly
         s.translationKey = res[0].translationKey
         s.imageURL = res[0].imageURL
 
-        const actions = res[0].backButtonActions
+        const actions = res[0].backButtonActions || []
         for(let i = 0; i < actions.length; i++) {
             s.backButtonActions.push(actions[i])
         }
-        const buttons = res[0].buttons
+        const buttons = res[0].buttons || []
         for(let i = 0; i < buttons.length; i++) {
             s.buttons.push(buttons[i])
         }

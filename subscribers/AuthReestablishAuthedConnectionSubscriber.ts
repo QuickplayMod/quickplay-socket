@@ -37,7 +37,7 @@ class AuthReestablishAuthedConnectionSubscriber extends Subscriber {
         const premiumExpiration = premiumRes.length > 0 ? premiumRes[0].expires : null
 
         const sessionExpiration = moment(sessionRes[0].created)
-        const sessionTtl = sessionExpiration.diff(moment())
+        const sessionTtl = moment().diff(sessionExpiration)
         ctx.sendAction(new AuthCompleteAction(sessionToken, sessionExpiration.toDate(),
             accountRes[0].mc_uuid, accountRes[0].discord_id || '', accountRes[0].google_id || '',
             !!accountRes[0].is_admin, (premiumRes.length > 0), premiumExpiration))
