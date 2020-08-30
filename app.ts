@@ -119,14 +119,14 @@ async function begin() {
     actionBus.subscribe(AuthGoogleEndHandshakeAction, endAuthSub)
     actionBus.subscribe(InitializeClientAction, new InitializeClientSubscriber())
     actionBus.subscribe(AuthReestablishAuthedConnectionAction, new AuthReestablishAuthedConnectionSubscriber())
-    actionBus.subscribe(AlterScreenAction, new AlterScreenSubscriber(ws))
-    actionBus.subscribe(DeleteScreenAction, new DeleteScreenSubscriber(ws))
-    actionBus.subscribe(AlterButtonAction, new AlterButtonSubscriber(ws))
-    actionBus.subscribe(DeleteButtonAction, new DeleteButtonSubscriber(ws))
+    actionBus.subscribe(AlterScreenAction, new AlterScreenSubscriber())
+    actionBus.subscribe(DeleteScreenAction, new DeleteScreenSubscriber())
+    actionBus.subscribe(AlterButtonAction, new AlterButtonSubscriber())
+    actionBus.subscribe(DeleteButtonAction, new DeleteButtonSubscriber())
     actionBus.subscribe(AlterAliasedActionAction, new AlterAliasedActionSubscriber())
-    actionBus.subscribe(DeleteAliasedActionAction, new DeleteAliasedActionSubscriber(ws))
-    actionBus.subscribe(AlterTranslationAction, new AlterTranslationSubscriber(ws))
-    actionBus.subscribe(DeleteTranslationAction, new DeleteTranslationSubscriber(ws))
+    actionBus.subscribe(DeleteAliasedActionAction, new DeleteAliasedActionSubscriber())
+    actionBus.subscribe(AlterTranslationAction, new AlterTranslationSubscriber())
+    actionBus.subscribe(DeleteTranslationAction, new DeleteTranslationSubscriber())
 
     ws.on('connection', async function connection(conn) {
 

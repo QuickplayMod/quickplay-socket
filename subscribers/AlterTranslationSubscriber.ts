@@ -3,16 +3,8 @@ import SessionContext from '../SessionContext'
 import mysqlPool from '../mysqlPool'
 import StateAggregator from '../StateAggregator'
 import {getRedis} from '../redis'
-import * as WebSocket from 'ws'
 
 class AlterTranslationSubscriber extends Subscriber {
-
-    ws: WebSocket.Server
-
-    constructor(websocket: WebSocket.Server) {
-        super()
-        this.ws = websocket
-    }
 
     async run(action: Action, ctx: SessionContext): Promise<void> {
         if(!ctx.authed || !(await ctx.getIsAdmin())) {
