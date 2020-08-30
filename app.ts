@@ -35,16 +35,16 @@ import DeleteAliasedActionSubscriber from './subscribers/DeleteAliasedActionSubs
 import AlterAliasedActionSubscriber from './subscribers/AlterAliasedActionSubscriber'
 import AlterTranslationSubscriber from './subscribers/AlterTranslationSubscriber'
 import DeleteTranslationSubscriber from './subscribers/DeleteTranslationSubscriber'
-import SetAliasedActionAction from "@quickplaymod/quickplay-actions-js/dist/actions/clientbound/SetAliasedActionAction";
-import SetButtonAction from "@quickplaymod/quickplay-actions-js/dist/actions/clientbound/SetButtonAction";
-import SetScreenAction from "@quickplaymod/quickplay-actions-js/dist/actions/clientbound/SetScreenAction";
-import SetTranslationAction from "@quickplaymod/quickplay-actions-js/dist/actions/clientbound/SetTranslationAction";
+import SetAliasedActionAction from '@quickplaymod/quickplay-actions-js/dist/actions/clientbound/SetAliasedActionAction'
+import SetButtonAction from '@quickplaymod/quickplay-actions-js/dist/actions/clientbound/SetButtonAction'
+import SetScreenAction from '@quickplaymod/quickplay-actions-js/dist/actions/clientbound/SetScreenAction'
+import SetTranslationAction from '@quickplaymod/quickplay-actions-js/dist/actions/clientbound/SetTranslationAction'
 import RemoveAliasedActionAction
-    from "@quickplaymod/quickplay-actions-js/dist/actions/clientbound/RemoveAliasedActionAction";
-import RemoveButtonAction from "@quickplaymod/quickplay-actions-js/dist/actions/clientbound/RemoveButtonAction";
-import RemoveScreenAction from "@quickplaymod/quickplay-actions-js/dist/actions/clientbound/RemoveScreenAction";
+    from '@quickplaymod/quickplay-actions-js/dist/actions/clientbound/RemoveAliasedActionAction'
+import RemoveButtonAction from '@quickplaymod/quickplay-actions-js/dist/actions/clientbound/RemoveButtonAction'
+import RemoveScreenAction from '@quickplaymod/quickplay-actions-js/dist/actions/clientbound/RemoveScreenAction'
 import RemoveTranslationAction
-    from "@quickplaymod/quickplay-actions-js/dist/actions/clientbound/RemoveTranslationAction";
+    from '@quickplaymod/quickplay-actions-js/dist/actions/clientbound/RemoveTranslationAction'
 
 let redis : IORedis.Redis
 let redisSub : IORedis.Redis
