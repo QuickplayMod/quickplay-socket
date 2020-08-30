@@ -8,15 +8,15 @@ let redisConnected = false
 let redisSubConnected = false
 
 redisSubscriber.on('connect', async () => {
+    redisSubConnected = true
     console.log('Redis sub connected')
     await redisSubscriber.subscribe('conn-notif')
     await redisSubscriber.subscribe('list-change')
-    redisSubConnected = true
 })
 redis.on('connect', async () => {
+    redisConnected = true
     console.log('Redis connected')
     await redis.set('connections', 0)
-    redisConnected = true
 })
 
 function getRedis () : Promise<IORedis.Redis> {
@@ -44,9 +44,12 @@ function getRedisSubscriber() : Promise<IORedis.Redis> {
             redisSubConnected = true
             resolved = true
         })
-        if(redisSubConnected && !resolved) {
-            resolve(redisSubscriber)
-        }
+        // Push code to the bottom of the event loop
+        setTimeout(() => {
+            if(redisSubConnected && !resolved) {
+                resolve(redisSubscriber)
+            }
+        }, 0)
     })
 }
 
