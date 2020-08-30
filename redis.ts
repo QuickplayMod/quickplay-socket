@@ -41,6 +41,7 @@ function getRedisSubscriber() : Promise<IORedis.Redis> {
         let resolved = false
         redisSubscriber.on('connect', () => {
             resolve(redisSubscriber)
+            redisSubConnected = true
             resolved = true
         })
         if(redisSubConnected && !resolved) {
