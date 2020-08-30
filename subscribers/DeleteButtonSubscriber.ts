@@ -1,10 +1,18 @@
-import {Action, ChatFormatting, Message, RemoveButtonAction, Subscriber} from '@quickplaymod/quickplay-actions-js'
+import {Action, ChatFormatting, DeleteButtonAction, Message, Subscriber} from '@quickplaymod/quickplay-actions-js'
 import SessionContext from '../SessionContext'
 import mysqlPool from '../mysqlPool'
 import StateAggregator from '../StateAggregator'
 import {getRedis} from '../redis'
+import * as WebSocket from 'ws'
 
 class DeleteButtonSubscriber extends Subscriber {
+
+    ws: WebSocket.Server
+
+    constructor(websocket: WebSocket.Server) {
+        super()
+        this.ws = websocket
+    }
 
     async run(action: Action, ctx: SessionContext): Promise<void> {
         if(!ctx.authed || !(await ctx.getIsAdmin())) {
@@ -20,8 +28,9 @@ class DeleteButtonSubscriber extends Subscriber {
 
         try {
             await mysqlPool.query('DELETE FROM buttons WHERE `key`=?', [buttonKey])
-            await (await getRedis()).hdel('buttons', buttonKey)
-            ctx.sendAction(new RemoveButtonAction(buttonKey))
+            const redis = await getRedis()
+            await redis.hdel('buttons', buttonKey)
+            await redis.publish('list-change', DeleteButtonAction.id + ',' + buttonKey)
         } catch (e) {
             console.error(e)
             ctx.sendChatComponentMessage(new Message(

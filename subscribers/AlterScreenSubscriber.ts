@@ -1,10 +1,25 @@
-import {Action, ChatFormatting, Message, Screen, SetScreenAction, Subscriber} from '@quickplaymod/quickplay-actions-js'
+import {
+    Action,
+    AlterScreenAction,
+    ChatFormatting,
+    Message,
+    Screen,
+    Subscriber
+} from '@quickplaymod/quickplay-actions-js'
 import SessionContext from '../SessionContext'
 import mysqlPool from '../mysqlPool'
 import StateAggregator from '../StateAggregator'
 import {getRedis} from '../redis'
+import * as WebSocket from 'ws'
 
 class AlterScreenSubscriber extends Subscriber {
+
+    ws: WebSocket.Server
+
+    constructor(websocket: WebSocket.Server) {
+        super()
+        this.ws = websocket
+    }
 
     async run(action: Action, ctx: SessionContext): Promise<void> {
         if(!ctx.authed || !(await ctx.getIsAdmin())) {
@@ -67,8 +82,9 @@ class AlterScreenSubscriber extends Subscriber {
 
 
             const pulledNewScreen = await StateAggregator.pullScreen(newScreenKey)
-            await (await getRedis()).hset('screens', newScreenKey, JSON.stringify(pulledNewScreen))
-            ctx.sendAction(new SetScreenAction(pulledNewScreen))
+            const redis = await getRedis()
+            await redis.hset('screens', newScreenKey, JSON.stringify(pulledNewScreen))
+            await redis.publish('list-change', AlterScreenAction.id + ',' + newScreenKey)
         } catch (e) {
             console.error(e)
             ctx.sendChatComponentMessage(new Message(

@@ -1,10 +1,25 @@
-import {Action, Button, ChatFormatting, Message, SetButtonAction, Subscriber} from '@quickplaymod/quickplay-actions-js'
+import {
+    Action,
+    AlterButtonAction,
+    Button,
+    ChatFormatting,
+    Message,
+    Subscriber
+} from '@quickplaymod/quickplay-actions-js'
 import SessionContext from '../SessionContext'
 import mysqlPool from '../mysqlPool'
 import StateAggregator from '../StateAggregator'
 import {getRedis} from '../redis'
+import * as WebSocket from 'ws'
 
 class AlterButtonSubscriber extends Subscriber {
+
+    ws: WebSocket.Server
+
+    constructor(websocket: WebSocket.Server) {
+        super()
+        this.ws = websocket
+    }
 
     async run(action: Action, ctx: SessionContext): Promise<void> {
         if(!ctx.authed || !(await ctx.getIsAdmin())) {
@@ -60,8 +75,9 @@ class AlterButtonSubscriber extends Subscriber {
             }
 
             const pulledNewButton = await StateAggregator.pullButton(newButtonKey)
-            await (await getRedis()).hset('buttons', newButtonKey, JSON.stringify(pulledNewButton))
-            ctx.sendAction(new SetButtonAction(pulledNewButton))
+            const redis = await getRedis()
+            await redis.hset('buttons', newButtonKey, JSON.stringify(pulledNewButton))
+            await redis.publish('list-change', AlterButtonAction.id + ',' + newButtonKey)
         } catch (e) {
             console.error(e)
             ctx.sendChatComponentMessage(new Message(

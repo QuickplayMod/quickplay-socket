@@ -1,9 +1,9 @@
 import {
     Action,
     AliasedAction,
+    AlterAliasedActionAction,
     ChatFormatting,
     Message,
-    SetAliasedActionAction,
     Subscriber
 } from '@quickplaymod/quickplay-actions-js'
 import SessionContext from '../SessionContext'
@@ -82,8 +82,9 @@ class AlterAliasedActionSubscriber extends Subscriber {
             }
 
             const pulledNewAliasedAction = await StateAggregator.pullAliasedAction(newAliasedActionKey)
-            await (await getRedis()).hset('aliasedActions', newAliasedActionKey, JSON.stringify(pulledNewAliasedAction))
-            ctx.sendAction(new SetAliasedActionAction(pulledNewAliasedAction))
+            const redis = await getRedis()
+            await redis.hset('aliasedActions', newAliasedActionKey, JSON.stringify(pulledNewAliasedAction))
+            await redis.publish('list-change', AlterAliasedActionAction.id + ',' + newAliasedActionKey)
         } catch (e) {
             console.error(e)
             ctx.sendChatComponentMessage(new Message(

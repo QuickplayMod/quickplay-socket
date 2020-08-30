@@ -1,8 +1,9 @@
 import * as WebSocket from 'ws'
-import {getRedis} from './redis'
+import {getRedis, getRedisSubscriber} from './redis'
 import * as IORedis from 'ioredis'
 import {
     ActionBus,
+    AliasedAction,
     AlterAliasedActionAction,
     AlterButtonAction,
     AlterScreenAction,
@@ -10,13 +11,15 @@ import {
     AuthGoogleEndHandshakeAction,
     AuthMojangEndHandshakeAction,
     AuthReestablishAuthedConnectionAction,
+    Button,
     DeleteAliasedActionAction,
     DeleteButtonAction,
     DeleteScreenAction,
     DeleteTranslationAction,
     InitializeClientAction,
     MigrateKeybindsAction,
-    Resolver
+    Resolver,
+    Screen
 } from '@quickplaymod/quickplay-actions-js'
 import StateAggregator from './StateAggregator'
 import SessionContext from './SessionContext'
@@ -32,12 +35,24 @@ import DeleteAliasedActionSubscriber from './subscribers/DeleteAliasedActionSubs
 import AlterAliasedActionSubscriber from './subscribers/AlterAliasedActionSubscriber'
 import AlterTranslationSubscriber from './subscribers/AlterTranslationSubscriber'
 import DeleteTranslationSubscriber from './subscribers/DeleteTranslationSubscriber'
+import SetAliasedActionAction from "@quickplaymod/quickplay-actions-js/dist/actions/clientbound/SetAliasedActionAction";
+import SetButtonAction from "@quickplaymod/quickplay-actions-js/dist/actions/clientbound/SetButtonAction";
+import SetScreenAction from "@quickplaymod/quickplay-actions-js/dist/actions/clientbound/SetScreenAction";
+import SetTranslationAction from "@quickplaymod/quickplay-actions-js/dist/actions/clientbound/SetTranslationAction";
+import RemoveAliasedActionAction
+    from "@quickplaymod/quickplay-actions-js/dist/actions/clientbound/RemoveAliasedActionAction";
+import RemoveButtonAction from "@quickplaymod/quickplay-actions-js/dist/actions/clientbound/RemoveButtonAction";
+import RemoveScreenAction from "@quickplaymod/quickplay-actions-js/dist/actions/clientbound/RemoveScreenAction";
+import RemoveTranslationAction
+    from "@quickplaymod/quickplay-actions-js/dist/actions/clientbound/RemoveTranslationAction";
 
 let redis : IORedis.Redis
+let redisSub : IORedis.Redis
 let actionBus : ActionBus
 
 (async () => {
     redis = await getRedis()
+    redisSub = await getRedisSubscriber()
     await begin()
 })()
 
@@ -45,6 +60,57 @@ let actionBus : ActionBus
  * Begin the websocket server.
  */
 async function begin() {
+
+    // Populate redis
+    console.log('Beginning population.')
+    await StateAggregator.populate()
+    console.log('Population complete. Initializing on port 80.')
+
+    // Create websocket server
+    const ws = new WebSocket.Server({ port: 80 })
+
+    // Handle changes in the aliased action/screen/button/translation lists
+    redisSub.on('message', async (channel, message) => {
+        if(channel != 'list-change') {
+            return
+        }
+        const splitMsg = message.split(',')
+        const id = splitMsg[0]
+        const key = splitMsg[1]
+        let buf
+
+        if(id == AlterAliasedActionAction.id) {
+            const aa = await AliasedAction.deserialize(await redis.hget('aliasedActions', key))
+            buf = new SetAliasedActionAction(aa).build()
+        } else if(id == AlterButtonAction.id) {
+            const button = await Button.deserialize(await redis.hget('buttons', key))
+            buf = new SetButtonAction(button).build()
+        } else if(id == AlterScreenAction.id) {
+            const scr = await Screen.deserialize(await redis.hget('screens', key))
+            buf = new SetScreenAction(scr).build()
+        } else if(id == AlterTranslationAction.id) {
+            const lang = splitMsg[2]
+            const val = await redis.hget('lang:' + lang, key)
+            buf = new SetTranslationAction(key, lang, val).build()
+        } else if(id == DeleteAliasedActionAction.id) {
+            buf = new RemoveAliasedActionAction(key)
+        } else if(id == DeleteButtonAction.id) {
+            buf = new RemoveButtonAction(key)
+        } else if(id == DeleteScreenAction.id) {
+            buf = new RemoveScreenAction(key)
+        } else if(id == DeleteTranslationAction.id) {
+            const lang = splitMsg[2]
+            buf = new RemoveTranslationAction(key, lang)
+        }
+
+        ws.clients.forEach((conn) => {
+            if(conn.readyState !== WebSocket.OPEN) {
+                return
+            }
+            conn.send(buf)
+        })
+    })
+
     // Create new action bus and add all subscriptions
     actionBus = new ActionBus()
     actionBus.subscribe(MigrateKeybindsAction, new MigrateKeybindsSubscriber())
@@ -53,23 +119,16 @@ async function begin() {
     actionBus.subscribe(AuthGoogleEndHandshakeAction, endAuthSub)
     actionBus.subscribe(InitializeClientAction, new InitializeClientSubscriber())
     actionBus.subscribe(AuthReestablishAuthedConnectionAction, new AuthReestablishAuthedConnectionSubscriber())
-    actionBus.subscribe(AlterScreenAction, new AlterScreenSubscriber())
-    actionBus.subscribe(DeleteScreenAction, new DeleteScreenSubscriber())
-    actionBus.subscribe(AlterButtonAction, new AlterButtonSubscriber())
-    actionBus.subscribe(DeleteButtonAction, new DeleteButtonSubscriber())
+    actionBus.subscribe(AlterScreenAction, new AlterScreenSubscriber(ws))
+    actionBus.subscribe(DeleteScreenAction, new DeleteScreenSubscriber(ws))
+    actionBus.subscribe(AlterButtonAction, new AlterButtonSubscriber(ws))
+    actionBus.subscribe(DeleteButtonAction, new DeleteButtonSubscriber(ws))
     actionBus.subscribe(AlterAliasedActionAction, new AlterAliasedActionSubscriber())
-    actionBus.subscribe(DeleteAliasedActionAction, new DeleteAliasedActionSubscriber())
-    actionBus.subscribe(AlterTranslationAction, new AlterTranslationSubscriber())
-    actionBus.subscribe(DeleteTranslationAction, new DeleteTranslationSubscriber())
+    actionBus.subscribe(DeleteAliasedActionAction, new DeleteAliasedActionSubscriber(ws))
+    actionBus.subscribe(AlterTranslationAction, new AlterTranslationSubscriber(ws))
+    actionBus.subscribe(DeleteTranslationAction, new DeleteTranslationSubscriber(ws))
 
-    // Populate redis
-    console.log('Beginning population.')
-    await StateAggregator.populate()
-    console.log('Population complete. Initializing on port 80.')
-
-    // Create websocket server
-    const wss = new WebSocket.Server({ port: 80 })
-    wss.on('connection', async function connection(conn) {
+    ws.on('connection', async function connection(conn) {
 
         const ctx = new SessionContext(conn)
         ctx.lastPong = new Date().getTime();
@@ -111,7 +170,7 @@ async function begin() {
     const pingInterval = 30000
     setInterval(() => {
         const now = new Date().getTime()
-        wss.clients.forEach((conn) => {
+        ws.clients.forEach((conn) => {
             if((conn as unknown as {ctx: SessionContext}).ctx.lastPong < now - pingInterval * 2) {
                 conn.terminate()
                 return
@@ -120,7 +179,7 @@ async function begin() {
         })
     }, pingInterval)
 
-    wss.on('error', async function (err) {
+    ws.on('error', async function (err) {
         console.warn(err)
     })
 }

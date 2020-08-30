@@ -10,6 +10,7 @@ let redisSubConnected = false
 redisSubscriber.on('connect', async () => {
     console.log('Redis sub connected')
     await redisSubscriber.subscribe('conn-notif')
+    await redisSubscriber.subscribe('list-change')
     redisSubConnected = true
 })
 redis.on('connect', async () => {

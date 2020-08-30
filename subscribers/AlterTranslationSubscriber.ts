@@ -1,11 +1,18 @@
-import {Action, ChatFormatting, Message, Subscriber} from '@quickplaymod/quickplay-actions-js'
+import {Action, AlterTranslationAction, ChatFormatting, Message, Subscriber} from '@quickplaymod/quickplay-actions-js'
 import SessionContext from '../SessionContext'
 import mysqlPool from '../mysqlPool'
 import StateAggregator from '../StateAggregator'
 import {getRedis} from '../redis'
-import SetTranslationAction from '@quickplaymod/quickplay-actions-js/dist/actions/clientbound/SetTranslationAction'
+import * as WebSocket from 'ws'
 
 class AlterTranslationSubscriber extends Subscriber {
+
+    ws: WebSocket.Server
+
+    constructor(websocket: WebSocket.Server) {
+        super()
+        this.ws = websocket
+    }
 
     async run(action: Action, ctx: SessionContext): Promise<void> {
         if(!ctx.authed || !(await ctx.getIsAdmin())) {
@@ -32,7 +39,11 @@ class AlterTranslationSubscriber extends Subscriber {
         if(!newTranslationLang || newTranslationLang.length > 16) {
             validationFailed = true
         }
-        // Translattion values are required and must be less than 512 chars
+        // Commas are not allowed in translation keys or langs
+        if(newTranslationKey.includes(',') || newTranslationLang.includes(',')) {
+            validationFailed = true
+        }
+        // Translation values are required and must be less than 512 chars
         if(!newTranslationValue || newTranslationValue.length > 512) {
             validationFailed = true
         }
@@ -59,7 +70,8 @@ class AlterTranslationSubscriber extends Subscriber {
 
             const redis = await getRedis()
             await redis.hset('lang:' + newTranslationLang, newTranslationKey, newTranslationValue)
-            ctx.sendAction(new SetTranslationAction(newTranslationKey, newTranslationLang, newTranslationValue))
+            await redis.publish('list-change',
+                AlterTranslationAction.id + ',' + newTranslationKey + ',' + newTranslationLang)
         } catch (e) {
             console.error(e)
             ctx.sendChatComponentMessage(new Message(

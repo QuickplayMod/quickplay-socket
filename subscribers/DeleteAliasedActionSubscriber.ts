@@ -1,12 +1,24 @@
-import {Action, ChatFormatting, Message, Subscriber} from '@quickplaymod/quickplay-actions-js'
+import {
+    Action,
+    ChatFormatting,
+    DeleteAliasedActionAction,
+    Message,
+    Subscriber
+} from '@quickplaymod/quickplay-actions-js'
 import SessionContext from '../SessionContext'
 import mysqlPool from '../mysqlPool'
 import StateAggregator from '../StateAggregator'
 import {getRedis} from '../redis'
-import RemoveAliasedActionAction
-    from '@quickplaymod/quickplay-actions-js/dist/actions/clientbound/RemoveAliasedActionAction'
+import * as WebSocket from 'ws'
 
 class DeleteAliasedActionSubscriber extends Subscriber {
+
+    ws: WebSocket.Server
+
+    constructor(websocket: WebSocket.Server) {
+        super()
+        this.ws = websocket
+    }
 
     async run(action: Action, ctx: SessionContext): Promise<void> {
         if(!ctx.authed || !(await ctx.getIsAdmin())) {
@@ -22,8 +34,9 @@ class DeleteAliasedActionSubscriber extends Subscriber {
 
         try {
             await mysqlPool.query('DELETE FROM aliased_actions WHERE `key`=?', [aaKey])
-            await (await getRedis()).hdel('aliasedActions', aaKey)
-            ctx.sendAction(new RemoveAliasedActionAction(aaKey))
+            const redis = await getRedis()
+            await redis.hdel('aliasedActions', aaKey)
+            await redis.publish('list-change', DeleteAliasedActionAction.id + ',' + aaKey)
         } catch (e) {
             console.error(e)
             ctx.sendChatComponentMessage(new Message(
