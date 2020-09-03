@@ -93,14 +93,14 @@ async function begin() {
             const val = await redis.hget('lang:' + lang, key)
             buf = new SetTranslationAction(key, lang, val).build()
         } else if(id == DeleteAliasedActionAction.id) {
-            buf = new RemoveAliasedActionAction(key)
+            buf = new RemoveAliasedActionAction(key).build()
         } else if(id == DeleteButtonAction.id) {
-            buf = new RemoveButtonAction(key)
+            buf = new RemoveButtonAction(key).build()
         } else if(id == DeleteScreenAction.id) {
-            buf = new RemoveScreenAction(key)
+            buf = new RemoveScreenAction(key).build()
         } else if(id == DeleteTranslationAction.id) {
             const lang = splitMsg[2]
-            buf = new RemoveTranslationAction(key, lang)
+            buf = new RemoveTranslationAction(key, lang).build()
         }
 
         ws.clients.forEach((conn) => {
