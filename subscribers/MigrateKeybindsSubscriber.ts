@@ -14,11 +14,18 @@ class MigrateKeybindsSubscriber extends Subscriber {
 
     async run(action: Action, ctx: SessionContext): Promise<void> {
         try {
-            this.convert(action, ctx.data.language as string).then((newAction) => {
-                ctx.sendAction(newAction)
+            this.convert(action, ctx.data.language as string).then((result) => {
+                ctx.sendAction(result.action)
                 ctx.sendChatComponentMessage(new Message(new ChatComponent(
                     'Migration complete!')
-                    .setColor(ChatFormatting.green), true))
+                    .setColor(ChatFormatting.green)))
+                if(result.failedKeybinds && result.failedKeybinds.length > 0) {
+                    ctx.sendChatComponentMessage(new Message(new ChatComponent(
+                        'One or more of your Quickplay keybinds could not be converted. They have been removed ' +
+                        'from your keybinds. Sorry for the inconvenience! ' +
+                        'Failed keybinds:\n\n' + result.failedKeybinds.join(',\n'))
+                        .setColor(ChatFormatting.yellow), true))
+                }
             }).catch(e => {
                 throw e
             })
@@ -45,9 +52,9 @@ class MigrateKeybindsSubscriber extends Subscriber {
                 if(resolved) {
                     return
                 }
-                for(let i = 0; i < result.length; i++) {
-                    if(result[i][1] === translationValue) {
-                        resolve(result[i][0])
+                for(let i = 0; i < result.length / 2; i++) {
+                    if(result[i*2+1] === translationValue) {
+                        resolve(result[i*2])
                         resolved = true
                         return
                     }
@@ -68,16 +75,18 @@ class MigrateKeybindsSubscriber extends Subscriber {
      * t is the total number of translations, b is the total number of buttons, and k is the total number of keybinds,
      * as opposed to O(tbk) with current language).
      */
-    async convert(incoming: Action, lang: string) : Promise<SetKeybindsAction> {
+    async convert(incoming: Action, lang: string) : Promise<{ action: SetKeybindsAction, failedKeybinds: unknown[] }> {
         // Find translations with the matching name
         // Get the key of that translation
         // Find the first button that is using that translation key
         // Set that button's key as the target button of the keybind
 
-        const start = new Date()
-        const keybinds = JSON.parse(incoming.getPayloadObjectAsString(0))
-        if(!Array.isArray(keybinds)) {
-            return new SetKeybindsAction([])
+        const userKeybinds = JSON.parse(incoming.getPayloadObjectAsString(0))
+        if(!Array.isArray(userKeybinds) || userKeybinds.length <= 0) {
+            return {
+                action: new SetKeybindsAction([]),
+                failedKeybinds: []
+            }
         }
         const redis = await getRedis()
         // Get all buttons in {buttonKey: buttonJson} object
@@ -96,20 +105,21 @@ class MigrateKeybindsSubscriber extends Subscriber {
         // })
 
         const failedKeybinds = []
-        for(let i = 0; i < keybinds.length; i++) {
+        const newKeybinds = []
+        for(let i = 0; i < userKeybinds.length; i++) {
             // Mark keybinds as failed if they are null or don't have a name
-            if(keybinds[i] == null || keybinds[i].name == null) {
+            if(userKeybinds[i] == null || userKeybinds[i].name == null) {
                 failedKeybinds.push(null) // This will at least tell the user one keybind failed
             }
             // Skip keybinds which already have a target
-            if(keybinds[i].target != null && keybinds[i].target != '') {
+            if(userKeybinds[i].target != null && userKeybinds[i].target != '') {
                 continue
             }
             // For each OLD keybind, look for a matching translation key for the name of the keybind
-            const key = await this.getKeyMatchingTranslation('lang:' + lang, keybinds[i].name)
+            const key = await this.getKeyMatchingTranslation('lang:' + lang, userKeybinds[i].name)
             // If translation key isn't found, mark this keybind as failed and continue
             if(key == null) {
-                failedKeybinds.push(keybinds[i].name)
+                failedKeybinds.push(userKeybinds[i].name)
                 continue
             }
 
@@ -121,22 +131,23 @@ class MigrateKeybindsSubscriber extends Subscriber {
                 }
                 const btnVal = await Button.deserialize(buttons[btn])
                 if(btnVal.translationKey === key) {
-                    buttonKey = key
+                    buttonKey = btnVal.key
                     break
                 }
             }
             // If none found, mark this keybind as failed and continue
             if(buttonKey == null) {
-                failedKeybinds.push(keybinds[i].name)
+                failedKeybinds.push(userKeybinds[i].name)
                 continue
             }
-            // Set the target; Gson will remove all other values on deserialization, so we don't need to remove them.
-            keybinds[i].target = buttonKey
+            userKeybinds[i].target = buttonKey
+            newKeybinds.push(userKeybinds[i])
         }
 
-        const end = new Date()
-        console.log('Conversion time:', end.getTime() - start.getTime())
-        return new SetKeybindsAction(keybinds)
+        return {
+            action: new SetKeybindsAction(newKeybinds),
+            failedKeybinds: failedKeybinds
+        }
     }
 }
 
