@@ -151,6 +151,8 @@ class AuthEndHandshakeSubscriber extends Subscriber {
             ctx.authed = false
             ctx.authenticate()
         }, 3 * 60 * 60 * 1000)
+
+        await ctx.sendEditHistory()
     }
 
     /**

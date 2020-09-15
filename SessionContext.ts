@@ -9,6 +9,8 @@ import {
     SendChatComponentAction
 } from '@quickplaymod/quickplay-actions-js'
 import mysqlPool from './mysqlPool'
+import PushEditHistoryEventAction
+    from '@quickplaymod/quickplay-actions-js/dist/actions/clientbound/PushEditHistoryEventAction'
 import WebSocket = require('ws');
 import Timer = NodeJS.Timer;
 
@@ -137,5 +139,24 @@ export default class SessionContext {
             return
         }
         this.conn.send(action.build())
+    }
+
+    /**
+     * Send the (recent) edit history to the user. The user should only receive edit history if they are an admin.
+     */
+    async sendEditHistory(): Promise<void> {
+        console.log('do it')
+        const [editHistory] = await mysqlPool.query('SELECT * from edit_log ORDER BY timestamp DESC LIMIT 1000')
+
+        for(let i = 0; i < editHistory.length; i++) {
+            console.log('Edit' , i)
+            const e = editHistory[i]
+            if(!e) {
+                continue
+            }
+            const editAction = new PushEditHistoryEventAction(new Date(e.timestamp), e.edited_by, e.item_type,
+                e.item_key, !!e.deleted, e.prev_version)
+            this.sendAction(editAction)
+        }
     }
 }
