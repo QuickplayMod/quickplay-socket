@@ -29,11 +29,22 @@ class AlterScreenSubscriber extends Subscriber {
 
         const newScreenType = newScreen.screenType === undefined ? screenRes[0].screenType : newScreen.screenType
         const newAvailableOn = newScreen.availableOn === undefined ? screenRes[0].availableOn : newScreen.availableOn
-        const newAdminOnly = newScreen.adminOnly === undefined ? screenRes[0].adminOnly : newScreen.adminOnly
         const newTranslationKey = newScreen.translationKey === undefined ? screenRes[0].translationKey : newScreen.translationKey
         const newImageUrl = newScreen.imageURL === undefined ? screenRes[0].imageURL : newScreen.imageURL
         const newScreenButtons = newScreen.buttons === undefined ? screenRes[0].buttons : newScreen.buttons
         const newBackButtonActions = newScreen.backButtonActions === undefined ? screenRes[0].backButtonActions : newScreen.backButtonActions
+        const newVisible = newScreen.visible === undefined ? screenRes[0].visible : newScreen.visible
+        const newAdminOnly = newScreen.adminOnly === undefined ? screenRes[0].adminOnly : newScreen.adminOnly
+        const newHypixelLocrawRegex = newScreen.hypixelLocrawRegex === undefined ?
+            screenRes[0].hypixelLocrawRegex : newScreen.hypixelLocrawRegex
+        const newHypixelRankRegex = newScreen.hypixelRankRegex === undefined ?
+            screenRes[0].hypixelRankRegex : newScreen.hypixelRankRegex
+        const newHypixelPackageRankRegex = newScreen.hypixelPackageRankRegex === undefined ?
+            screenRes[0].hypixelPackageRankRegex : newScreen.hypixelPackageRankRegex
+        const newHypixelBuildTeamOnly = newScreen.hypixelBuildTeamOnly === undefined ?
+            screenRes[0].hypixelBuildTeamOnly : newScreen.hypixelBuildTeamOnly
+        const newHypixelBuildTeamAdminOnly = newScreen.hypixelBuildTeamAdminOnly === undefined ?
+            screenRes[0].hypixelBuildTeamAdminOnly : newScreen.hypixelBuildTeamAdminOnly
 
         // Validation
         let validationFailed = false
@@ -62,14 +73,21 @@ class AlterScreenSubscriber extends Subscriber {
         try {
             if(screenRes.length > 0) {
                 await mysqlPool.query('UPDATE screens SET screenType=?, availableOn=?, translationKey=?, imageURL=?, \
-                    adminOnly=?, buttons=?, backButtonActions=? WHERE `key`=?',
-                [newScreenType, JSON.stringify(newAvailableOn), newTranslationKey, newImageUrl, newAdminOnly,
-                    JSON.stringify(newScreenButtons), JSON.stringify(newBackButtonActions), newScreenKey])
+                    buttons=?, backButtonActions=?, visible=?, adminOnly=?, hypixelLocrawRegex=?, hypixelRankRegex=?, \
+                    hypixelPackageRankRegex=?, hypixelBuildTeamOnly=?, hypixelBuildTeamAdminOnly=?  WHERE `key`=?',
+                [newScreenType, JSON.stringify(newAvailableOn), newTranslationKey, newImageUrl,
+                    JSON.stringify(newScreenButtons), JSON.stringify(newBackButtonActions), newVisible, newAdminOnly,
+                    JSON.stringify(newHypixelLocrawRegex), newHypixelRankRegex, newHypixelPackageRankRegex,
+                    newHypixelBuildTeamOnly, newHypixelBuildTeamAdminOnly, newScreenKey])
             } else {
                 await mysqlPool.query('INSERT INTO screens (`key`, screenType, availableOn, translationKey, imageURL, \
-                    adminOnly, buttons, backButtonActions) VALUES (?,?,?,?,?,?,?,?)',
+                    buttons, backButtonActions, visible, adminOnly, hypixelLocrawRegex, hypixelRankRegex, \
+                    hypixelPackageRankRegex, hypixelBuildTeamOnly, hypixelBuildTeamAdminOnly) VALUES \
+                    (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
                 [newScreenKey, newScreenType, JSON.stringify(newAvailableOn), newTranslationKey, newImageUrl,
-                    newAdminOnly, JSON.stringify(newScreenButtons), JSON.stringify(newBackButtonActions)])
+                    JSON.stringify(newScreenButtons), JSON.stringify(newBackButtonActions), newVisible, newAdminOnly,
+                    JSON.stringify(newHypixelLocrawRegex), newHypixelRankRegex, newHypixelPackageRankRegex,
+                    newHypixelBuildTeamOnly, newHypixelBuildTeamAdminOnly])
             }
 
 

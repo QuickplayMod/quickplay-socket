@@ -84,8 +84,14 @@ class StateAggregator {
         }
         const aa = new AliasedAction(res[0].key)
         aa.availableOn = res[0].availableOn
-        aa.adminOnly = res[0].adminOnly
         aa.action = new (Resolver.get(res[0].action))()
+        aa.visible = res[0].visible
+        aa.adminOnly = res[0].adminOnly
+        aa.hypixelLocrawRegex = res[0].hypixelLocrawRegex
+        aa.hypixelRankRegex = res[0].hypixelRankRegex
+        aa.hypixelPackageRankRegex = res[0].hypixelPackageRankRegex
+        aa.hypixelBuildTeamOnly = res[0].hypixelBuildTeamOnly
+        aa.hypixelBuildTeamAdminOnly = res[0].hypixelBuildTeamAdminOnly
         const args = res[0].args || []
         for(let i = 0; i < args.length; i++) {
             aa.action.addPayload(Buffer.from(args[0]))
@@ -105,9 +111,15 @@ class StateAggregator {
         }
         const b = new Button(res[0].key)
         b.availableOn = res[0].availableOn
-        b.adminOnly = res[0].adminOnly
         b.imageURL = res[0].imageURL
         b.translationKey = res[0].translationKey
+        b.visible = res[0].visible
+        b.adminOnly = res[0].adminOnly
+        b.hypixelLocrawRegex = res[0].hypixelLocrawRegex
+        b.hypixelRankRegex = res[0].hypixelRankRegex
+        b.hypixelPackageRankRegex = res[0].hypixelPackageRankRegex
+        b.hypixelBuildTeamOnly = res[0].hypixelBuildTeamOnly
+        b.hypixelBuildTeamAdminOnly = res[0].hypixelBuildTeamAdminOnly
         const actions = res[0].actions || []
         for(let i = 0; i < actions.length; i++) {
             b.actions.push(actions[i])
@@ -127,9 +139,15 @@ class StateAggregator {
         }
         const s = new Screen(res[0].key, res[0].screenType)
         s.availableOn = res[0].availableOn
-        s.adminOnly = res[0].adminOnly
         s.translationKey = res[0].translationKey
         s.imageURL = res[0].imageURL
+        s.visible = res[0].visible
+        s.adminOnly = res[0].adminOnly
+        s.hypixelLocrawRegex = res[0].hypixelLocrawRegex
+        s.hypixelRankRegex = res[0].hypixelRankRegex
+        s.hypixelPackageRankRegex = res[0].hypixelPackageRankRegex
+        s.hypixelBuildTeamOnly = res[0].hypixelBuildTeamOnly
+        s.hypixelBuildTeamAdminOnly = res[0].hypixelBuildTeamAdminOnly
 
         const actions = res[0].backButtonActions || []
         for(let i = 0; i < actions.length; i++) {

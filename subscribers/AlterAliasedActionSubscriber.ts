@@ -28,8 +28,19 @@ class AlterAliasedActionSubscriber extends Subscriber {
         const [aliasedActionRes] = await mysqlPool.query('SELECT * FROM aliased_actions WHERE `key`=?', [newAliasedActionKey])
 
         const newAvailableOn = newAliasedAction.availableOn === undefined ? aliasedActionRes[0].availableOn : newAliasedAction.availableOn
-        const newAdminOnly = newAliasedAction.adminOnly === undefined ? aliasedActionRes[0].adminOnly : newAliasedAction.adminOnly
         const newAction = newAliasedAction.action === undefined ? aliasedActionRes[0].action : newAliasedAction.action
+        const newVisible = newAliasedAction.visible === undefined ? aliasedActionRes[0].visible : newAliasedAction.visible
+        const newAdminOnly = newAliasedAction.adminOnly === undefined ? aliasedActionRes[0].adminOnly : newAliasedAction.adminOnly
+        const newHypixelLocrawRegex = newAliasedAction.hypixelLocrawRegex === undefined ?
+            aliasedActionRes[0].hypixelLocrawRegex : newAliasedAction.hypixelLocrawRegex
+        const newHypixelRankRegex = newAliasedAction.hypixelRankRegex === undefined ?
+            aliasedActionRes[0].hypixelRankRegex : newAliasedAction.hypixelRankRegex
+        const newHypixelPackageRankRegex = newAliasedAction.hypixelPackageRankRegex === undefined ?
+            aliasedActionRes[0].hypixelPackageRankRegex : newAliasedAction.hypixelPackageRankRegex
+        const newHypixelBuildTeamOnly = newAliasedAction.hypixelBuildTeamOnly === undefined ?
+            aliasedActionRes[0].hypixelBuildTeamOnly : newAliasedAction.hypixelBuildTeamOnly
+        const newHypixelBuildTeamAdminOnly = newAliasedAction.hypixelBuildTeamAdminOnly === undefined ?
+            aliasedActionRes[0].hypixelBuildTeamAdminOnly : newAliasedAction.hypixelBuildTeamAdminOnly
 
         // Validation
         let validationFailed = false
@@ -74,11 +85,19 @@ class AlterAliasedActionSubscriber extends Subscriber {
 
         try {
             if(aliasedActionRes.length > 0) {
-                await mysqlPool.query('UPDATE aliased_actions SET availableOn=?, adminOnly=?, action=?, args=? WHERE `key`=?',
-                    [JSON.stringify(newAvailableOn), newAdminOnly, newAction.id, JSON.stringify(newAction.payloadObjs), newAliasedActionKey])
+                await mysqlPool.query('UPDATE aliased_actions SET availableOn=?, action=?, args=?, visible=?, adminOnly=?, \
+                    hypixelLocrawRegex=?, hypixelRankRegex=?, hypixelPackageRankRegex=?, hypixelBuildTeamOnly=?, \
+                    hypixelBuildTeamAdminOnly=? WHERE `key`=?',
+                [JSON.stringify(newAvailableOn), newAction.id, JSON.stringify(newAction.payloadObjs), newVisible,
+                    newAdminOnly, JSON.stringify(newHypixelLocrawRegex), newHypixelRankRegex, newHypixelPackageRankRegex,
+                    newHypixelBuildTeamOnly, newHypixelBuildTeamAdminOnly, newAliasedActionKey])
             } else {
-                await mysqlPool.query('INSERT INTO aliased_actions (`key`, availableOn, adminOnly, action, args) VALUES (?,?,?,?,?)',
-                    [newAliasedActionKey, JSON.stringify(newAvailableOn), newAdminOnly, newAction.id, JSON.stringify(newAction.payloadObjs)])
+                await mysqlPool.query('INSERT INTO aliased_actions (`key`, availableOn, action, args, visible, adminOnly, \
+                     hypixelLocrawRegex, hypixelRankRegex, hypixelPackageRankRegex, hypixelBuildTeamOnly, \
+                     hypixelBuildTeamAdminOnly) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+                [newAliasedActionKey, JSON.stringify(newAvailableOn), newAction.id, JSON.stringify(newAction.payloadObjs),
+                    newVisible, newAdminOnly, JSON.stringify(newHypixelLocrawRegex), newHypixelRankRegex,
+                    newHypixelPackageRankRegex, newHypixelBuildTeamOnly, newHypixelBuildTeamAdminOnly])
             }
 
             const pulledNewAliasedAction = await StateAggregator.pullAliasedAction(newAliasedActionKey)

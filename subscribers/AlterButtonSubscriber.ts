@@ -28,10 +28,21 @@ class AlterButtonSubscriber extends Subscriber {
         const [buttonRes] = await mysqlPool.query('SELECT * FROM buttons WHERE `key`=?', [newButtonKey])
 
         const newAvailableOn = newButton.availableOn === undefined ? buttonRes[0].availableOn : newButton.availableOn
-        const newAdminOnly = newButton.adminOnly === undefined ? buttonRes[0].adminOnly : newButton.adminOnly
         const newTranslationKey = newButton.translationKey === undefined ? buttonRes[0].translationKey : newButton.translationKey
         const newImageUrl = newButton.imageURL === undefined ? buttonRes[0].imageURL : newButton.imageURL
         const newActions = newButton.actions === undefined ? buttonRes[0].actions : newButton.actions
+        const newVisible = newButton.visible === undefined ? buttonRes[0].visible : newButton.visible
+        const newAdminOnly = newButton.adminOnly === undefined ? buttonRes[0].adminOnly : newButton.adminOnly
+        const newHypixelLocrawRegex = newButton.hypixelLocrawRegex === undefined ?
+            buttonRes[0].hypixelLocrawRegex : newButton.hypixelLocrawRegex
+        const newHypixelRankRegex = newButton.hypixelRankRegex === undefined ?
+            buttonRes[0].hypixelRankRegex : newButton.hypixelRankRegex
+        const newHypixelPackageRankRegex = newButton.hypixelPackageRankRegex === undefined ?
+            buttonRes[0].hypixelPackageRankRegex : newButton.hypixelPackageRankRegex
+        const newHypixelBuildTeamOnly = newButton.hypixelBuildTeamOnly === undefined ?
+            buttonRes[0].hypixelBuildTeamOnly : newButton.hypixelBuildTeamOnly
+        const newHypixelBuildTeamAdminOnly = newButton.hypixelBuildTeamAdminOnly === undefined ?
+            buttonRes[0].hypixelBuildTeamAdminOnly : newButton.hypixelBuildTeamAdminOnly
 
         // Validation
         let validationFailed = false
@@ -59,11 +70,20 @@ class AlterButtonSubscriber extends Subscriber {
 
         try {
             if(buttonRes.length > 0) {
-                await mysqlPool.query('UPDATE buttons SET availableOn=?, translationKey=?, imageURL=?, adminOnly=?, actions=? WHERE `key`=?',
-                    [JSON.stringify(newAvailableOn), newTranslationKey, newImageUrl, newAdminOnly, JSON.stringify(newActions), newButtonKey])
+                await mysqlPool.query('UPDATE buttons SET availableOn=?, translationKey=?, imageURL=?, actions=?, \
+                    visible=?, adminOnly=?, hypixelLocrawRegex=?, hypixelRankRegex=?, hypixelPackageRankRegex=?, \
+                    hypixelBuildTeamOnly=?, hypixelBuildTeamAdminOnly=? WHERE `key`=?',
+                [JSON.stringify(newAvailableOn), newTranslationKey, newImageUrl, JSON.stringify(newActions),
+                    newVisible, newAdminOnly, JSON.stringify(newHypixelLocrawRegex), newHypixelRankRegex,
+                    newHypixelPackageRankRegex, newHypixelBuildTeamOnly, newHypixelBuildTeamAdminOnly, newButtonKey])
             } else {
-                await mysqlPool.query('INSERT INTO buttons (`key`, availableOn, translationKey, imageURL, adminOnly, actions) VALUES (?,?,?,?,?,?)',
-                    [newButtonKey, JSON.stringify(newAvailableOn), newTranslationKey, newImageUrl, newAdminOnly, JSON.stringify(newActions)])
+                await mysqlPool.query('INSERT INTO buttons (`key`, availableOn, translationKey, imageURL, actions, \
+                    visible, adminOnly, hypixelLocrawRegex, hypixelRankRegex, hypixelPackageRankRegex, \
+                    hypixelBuildTeamOnly, hypixelBuildTeamAdminOnly) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
+                [newButtonKey, JSON.stringify(newAvailableOn), newTranslationKey, newImageUrl,
+                    JSON.stringify(newActions), newVisible, newAdminOnly, JSON.stringify(newHypixelLocrawRegex),
+                    newHypixelRankRegex, newHypixelPackageRankRegex, newHypixelBuildTeamOnly,
+                    newHypixelBuildTeamAdminOnly])
             }
 
             const pulledNewButton = await StateAggregator.pullButton(newButtonKey)
