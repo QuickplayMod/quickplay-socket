@@ -145,11 +145,12 @@ export default class SessionContext {
      * Send the (recent) edit history to the user. The user should only receive edit history if they are an admin.
      */
     async sendEditHistory(): Promise<void> {
-        console.log('do it')
+        if(!this.authed || ! await this.getIsAdmin()) {
+            return
+        }
         const [editHistory] = await mysqlPool.query('SELECT * from edit_log ORDER BY timestamp DESC LIMIT 1000')
 
         for(let i = 0; i < editHistory.length; i++) {
-            console.log('Edit' , i)
             const e = editHistory[i]
             if(!e) {
                 continue
