@@ -86,6 +86,10 @@ class AlterButtonSubscriber extends Subscriber {
                     newHypixelBuildTeamAdminOnly])
             }
 
+            // Log the edit to the edit log
+            await mysqlPool.query('INSERT INTO edit_log (edited_by, item_type, item_key, deleted, prev_version) \
+                VALUES (?,?,?,?,?)', [ctx.accountId, 'button', newButtonKey, false, JSON.stringify(buttonRes[0])])
+
             const pulledNewButton = await StateAggregator.pullButton(newButtonKey)
             const redis = await getRedis()
             await redis.hset('buttons', newButtonKey, JSON.stringify(pulledNewButton))

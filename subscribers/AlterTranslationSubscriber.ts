@@ -60,6 +60,12 @@ class AlterTranslationSubscriber extends Subscriber {
                     [newTranslationKey, newTranslationLang, newTranslationValue])
             }
 
+            // Log the edit to the edit log
+            await mysqlPool.query('INSERT INTO edit_log (edited_by, item_type, item_key, deleted, prev_version) \
+                VALUES (?,?,?,?,?)', [ctx.accountId, 'translation', newTranslationKey, false,
+                JSON.stringify(translationRes[0])])
+
+
             const redis = await getRedis()
             await redis.hset('lang:' + newTranslationLang, newTranslationKey, newTranslationValue)
             await redis.publish('list-change',

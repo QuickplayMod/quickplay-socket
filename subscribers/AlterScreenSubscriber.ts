@@ -90,6 +90,9 @@ class AlterScreenSubscriber extends Subscriber {
                     newHypixelBuildTeamOnly, newHypixelBuildTeamAdminOnly])
             }
 
+            // Log the edit to the edit log
+            await mysqlPool.query('INSERT INTO edit_log (edited_by, item_type, item_key, deleted, prev_version) \
+                VALUES (?,?,?,?,?)', [ctx.accountId, 'screen', newScreenKey, false, JSON.stringify(screenRes[0])])
 
             const pulledNewScreen = await StateAggregator.pullScreen(newScreenKey)
             const redis = await getRedis()

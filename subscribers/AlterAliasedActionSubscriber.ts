@@ -100,6 +100,11 @@ class AlterAliasedActionSubscriber extends Subscriber {
                     newHypixelPackageRankRegex, newHypixelBuildTeamOnly, newHypixelBuildTeamAdminOnly])
             }
 
+            // Log the edit to the edit log
+            await mysqlPool.query('INSERT INTO edit_log (edited_by, item_type, item_key, deleted, prev_version) \
+                VALUES (?,?,?,?,?)', [ctx.accountId, 'aliased_action', newAliasedActionKey, false,
+                JSON.stringify(aliasedActionRes[0])])
+
             const pulledNewAliasedAction = await StateAggregator.pullAliasedAction(newAliasedActionKey)
             const redis = await getRedis()
             await redis.hset('aliasedActions', newAliasedActionKey, JSON.stringify(pulledNewAliasedAction))

@@ -19,7 +19,13 @@ class DeleteScreenSubscriber extends Subscriber {
         const screenKey = action.getPayloadObjectAsString(0)
 
         try {
+            const [screenRes] = await mysqlPool.query('SELECT * FROM screens WHERE `key`=?', [screenKey])
             await mysqlPool.query('DELETE FROM screens WHERE `key`=?', [screenKey])
+
+            // Log the edit to the edit log
+            await mysqlPool.query('INSERT INTO edit_log (edited_by, item_type, item_key, deleted, prev_version) \
+                VALUES (?,?,?,?,?)', [ctx.accountId, 'screen', screenKey, true, JSON.stringify(screenRes[0])])
+
             const redis = await getRedis()
             await redis.hdel('screens', screenKey)
             await redis.publish('list-change', DeleteScreenAction.id + ',' + screenKey)

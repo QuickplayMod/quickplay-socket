@@ -20,7 +20,15 @@ class DeleteTranslationSubscriber extends Subscriber {
         const translationLang = action.getPayloadObjectAsString(1)
 
         try {
+            const [translationRes] = await mysqlPool.query('SELECT * FROM translations WHERE `key`=? AND lang=?',
+                [translationKey, translationLang])
             await mysqlPool.query('DELETE FROM translations WHERE `key`=? AND lang=?', [translationKey, translationLang])
+
+            // Log the edit to the edit log
+            await mysqlPool.query('INSERT INTO edit_log (edited_by, item_type, item_key, deleted, prev_version) \
+                VALUES (?,?,?,?,?)', [ctx.accountId, 'translation', translationKey, true,
+                JSON.stringify(translationRes[0])])
+
             const redis = await getRedis()
             await redis.hdel('lang:' + translationLang, translationKey)
             await redis.publish('list-change',

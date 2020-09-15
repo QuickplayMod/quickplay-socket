@@ -19,7 +19,13 @@ class DeleteButtonSubscriber extends Subscriber {
         const buttonKey = action.getPayloadObjectAsString(0)
 
         try {
+            const [buttonRes] = await mysqlPool.query('SELECT * FROM buttons WHERE `key`=?', [buttonKey])
             await mysqlPool.query('DELETE FROM buttons WHERE `key`=?', [buttonKey])
+
+            // Log the edit to the edit log
+            await mysqlPool.query('INSERT INTO edit_log (edited_by, item_type, item_key, deleted, prev_version) \
+                VALUES (?,?,?,?,?)', [ctx.accountId, 'button', buttonKey, true, JSON.stringify(buttonRes[0])])
+
             const redis = await getRedis()
             await redis.hdel('buttons', buttonKey)
             await redis.publish('list-change', DeleteButtonAction.id + ',' + buttonKey)
