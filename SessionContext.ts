@@ -11,6 +11,8 @@ import {
 import mysqlPool from './mysqlPool'
 import PushEditHistoryEventAction
     from '@quickplaymod/quickplay-actions-js/dist/actions/clientbound/PushEditHistoryEventAction'
+import {getRedis} from './redis'
+import {sprintf} from 'sprintf-js'
 import WebSocket = require('ws');
 import Timer = NodeJS.Timer;
 
@@ -159,5 +161,24 @@ export default class SessionContext {
                 e.item_key, !!e.deleted, e.prev_version)
             this.sendAction(editAction)
         }
+    }
+
+    /**
+     * Translate a given key into the preferred language of this session.
+     * @param key {string} Translation key to translate
+     * @param args {string[]} Arguments to be used to replace variables in the translation, if necessary.
+     * @return {Promise<string>} The translated string, or the original key if no translation was found
+     */
+    async translate(key: string, ...args: string[]): Promise<string> {
+        const redis = await getRedis()
+        const result = await redis.hget('lang:' + this.data.language, key)
+        if(result != null) {
+            return sprintf(result, ...args)
+        }
+        const englishResult = await redis.hget('lang:en_us', key)
+        if(englishResult != null) {
+            return sprintf(englishResult, ...args)
+        }
+        return key
     }
 }

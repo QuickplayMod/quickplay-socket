@@ -2,6 +2,7 @@ import {Action, AuthCompleteAction, AuthFailedAction, Subscriber} from '@quickpl
 import SessionContext from '../SessionContext'
 import mysqlPool from '../mysqlPool'
 import * as moment from 'moment'
+import DisableModAction from '@quickplaymod/quickplay-actions-js/dist/actions/clientbound/DisableModAction'
 
 class AuthReestablishAuthedConnectionSubscriber extends Subscriber {
     async run(action: Action, ctx: SessionContext): Promise<void> {
@@ -28,6 +29,10 @@ class AuthReestablishAuthedConnectionSubscriber extends Subscriber {
         if(accountRes.length <= 0) {
             console.log('Auth failed: Session is linked to an account which doesn\'t exist anymore.')
             ctx.sendAction(new AuthFailedAction())
+            return
+        }
+        if(accountRes[0].banned) {
+            ctx.sendAction(new DisableModAction(await ctx.translate('quickplay.bannedFromOfficialApi')))
             return
         }
 

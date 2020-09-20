@@ -11,6 +11,7 @@ import {
     Subscriber
 } from '@quickplaymod/quickplay-actions-js'
 import {OAuth2Client} from 'google-auth-library'
+import DisableModAction from '@quickplaymod/quickplay-actions-js/dist/actions/clientbound/DisableModAction'
 
 class AuthEndHandshakeSubscriber extends Subscriber {
 
@@ -127,6 +128,11 @@ class AuthEndHandshakeSubscriber extends Subscriber {
         const [accountRes] = await mysqlPool.query('SELECT * FROM accounts WHERE id=?', [ctx.accountId])
         if(accountRes.length <= 0) {
             throw new Error('Account doesn\'t exist for the connection\'s account ID.')
+        }
+
+        if(accountRes[0].banned) {
+            ctx.sendAction(new DisableModAction(await ctx.translate('quickplay.bannedFromOfficialApi')))
+            return
         }
 
         // Update login timestamps
