@@ -45,7 +45,6 @@ import AlterAliasedActionSubscriber from './subscribers/AlterAliasedActionSubscr
 import AlterTranslationSubscriber from './subscribers/AlterTranslationSubscriber'
 import DeleteTranslationSubscriber from './subscribers/DeleteTranslationSubscriber'
 import SetClientSettingsSubscriber from './subscribers/SetClientSettingsSubscriber'
-import {DailyRewardClaimer} from '@quickplaymod/hypixel-daily-reward-claimer'
 
 let redis : IORedis.Redis
 let redisSub : IORedis.Redis
@@ -61,9 +60,6 @@ let actionBus : ActionBus
  * Begin the websocket server.
  */
 async function begin() {
-
-    const drc = new DailyRewardClaimer()
-    console.log(await drc.get('035265f2'))
 
     // Populate redis
     console.log('Beginning population.')
