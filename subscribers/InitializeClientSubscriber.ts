@@ -1,19 +1,8 @@
 import SessionContext from '../SessionContext'
-import {
-    Action,
-    AliasedAction,
-    AuthFailedAction,
-    Button,
-    Screen,
-    SetAliasedActionAction,
-    SetButtonAction,
-    SetScreenAction,
-    SetTranslationAction,
-    Subscriber
-} from '@quickplaymod/quickplay-actions-js'
-import {getRedis} from '../redis'
+import {Action, AuthFailedAction, Subscriber} from '@quickplaymod/quickplay-actions-js'
 import {IdentifierTypes} from '@quickplaymod/quickplay-actions-js/dist/actions/serverbound/InitializeClientAction'
 import mysqlPool from '../mysqlPool'
+import {RowDataPacket} from 'mysql2'
 
 class InitializeClientSubscriber extends Subscriber {
 
@@ -68,9 +57,7 @@ class InitializeClientSubscriber extends Subscriber {
         ctx.accountId = id
 
         await ctx.authenticate()
-
-        // Send screen data
-        await this.sendScreenData(ctx)
+        await ctx.sendGameListData()
     }
 
     /**
@@ -82,10 +69,12 @@ class InitializeClientSubscriber extends Subscriber {
         if(!accountId || accountId.length != 32 || accountId == '00000000000000000000000000000000') {
             return -1
         }
-        let [res] = await mysqlPool.query('SELECT id, mc_uuid FROM accounts WHERE mc_uuid=? LIMIT 1', [accountId])
+        let [res] = <RowDataPacket[]> await mysqlPool.query('SELECT id, mc_uuid FROM accounts WHERE mc_uuid=? LIMIT 1',
+            [accountId])
         if(res.length <= 0) {
             await mysqlPool.query('INSERT INTO accounts (mc_uuid) VALUES (?)', [accountId])
-            res = await mysqlPool.query('SELECT id, mc_uuid FROM accounts WHERE mc_uuid=? LIMIT 1', [accountId])
+            res = (<RowDataPacket[]> await mysqlPool.query('SELECT id, mc_uuid FROM accounts WHERE mc_uuid=? LIMIT 1',
+                [accountId]))[0]
             // Should never happen...
             if(res.length <= 0) {
                 throw new Error('User could not be found in database despite just being defined!')
@@ -103,64 +92,12 @@ class InitializeClientSubscriber extends Subscriber {
         if(!accountId) {
             return -1
         }
-        const [res] = await mysqlPool.query('SELECT google_id, id FROM accounts WHERE google_id=? LIMIT 1', [accountId])
+        const [res] = <RowDataPacket[]> await mysqlPool.query('SELECT google_id, id FROM accounts WHERE google_id=? LIMIT 1',
+            [accountId])
         if(res.length <= 0) {
             return -1
         }
         return res[0].id
-    }
-
-    /**
-     * Send data about the screens, buttons, actions, and translations to the user. This is done after an
-     * InitializeClientAction action because it depends on the user's language.
-     * @param ctx {SessionContext} Session context
-     */
-    async sendScreenData(ctx: SessionContext) : Promise<void> {
-        const redis = await getRedis()
-        const screens = await redis.hgetall('screens')
-        const buttons = await redis.hgetall('buttons')
-        const aliasedActions = await redis.hgetall('aliasedActions')
-
-        // Translations default to English. If a translation is available in the user's language, it is
-        // overwritten with the translation value.
-        const translations = await redis.hgetall('lang:en_us')
-        if(ctx.data.language != 'en_us' && await redis.exists('lang:' + ctx.data.language)) {
-            const localTranslations = await redis.hgetall('lang:' + ctx.data.language)
-            for(const item in localTranslations) {
-                if(!localTranslations.hasOwnProperty(item)) {
-                    continue
-                }
-                translations[item] = localTranslations[item]
-            }
-        }
-
-        for(const translation in translations) {
-            if(!translations.hasOwnProperty(translation)) {
-                continue
-            }
-            ctx.sendAction(new SetTranslationAction(translation, ctx.data.language as string, translations[translation]))
-        }
-        for(const action in aliasedActions) {
-            if(!aliasedActions.hasOwnProperty(action)) {
-                continue
-            }
-            const parsedAction = await AliasedAction.deserialize(aliasedActions[action])
-            ctx.sendAction(new SetAliasedActionAction(parsedAction))
-        }
-        for(const button in buttons) {
-            if(!buttons.hasOwnProperty(button)) {
-                continue
-            }
-            const parsedButton = await Button.deserialize(buttons[button])
-            ctx.sendAction(new SetButtonAction(parsedButton))
-        }
-        for(const screen in screens) {
-            if(!screens.hasOwnProperty(screen) || !screens[screen]) {
-                continue
-            }
-            const parsedScreen = await Screen.deserialize(screens[screen])
-            ctx.sendAction(new SetScreenAction(parsedScreen))
-        }
     }
 }
 

@@ -12,6 +12,7 @@ import {
 } from '@quickplaymod/quickplay-actions-js'
 import {OAuth2Client} from 'google-auth-library'
 import DisableModAction from '@quickplaymod/quickplay-actions-js/dist/actions/clientbound/DisableModAction'
+import {RowDataPacket} from 'mysql2'
 
 class AuthEndHandshakeSubscriber extends Subscriber {
 
@@ -58,10 +59,12 @@ class AuthEndHandshakeSubscriber extends Subscriber {
      */
     async validateWithGoogleServers(action: Action, ctx: SessionContext): Promise<boolean> {
         // Get the latest handshake request for this user's account from the last minute
-        const [res] = await mysqlPool.query('SELECT * FROM sessions WHERE user=? AND token IS NULL AND handshake IS NOT NULL\
-        AND created > NOW() - INTERVAL 1 MINUTE ORDER BY CREATED DESC LIMIT 1', [ctx.accountId])
+        const [res] = <RowDataPacket[]> await mysqlPool.query('SELECT * FROM sessions WHERE user=? AND \
+        token IS NULL AND handshake IS NOT NULL AND created > NOW() - INTERVAL 1 MINUTE ORDER BY CREATED DESC LIMIT 1',
+        [ctx.accountId])
         // Get user's account data
-        const [accountRes] = await mysqlPool.query('SELECT * FROM accounts WHERE id=?', [ctx.accountId])
+        const [accountRes] = <RowDataPacket[]> await mysqlPool.query('SELECT * FROM accounts WHERE id=?',
+            [ctx.accountId])
 
         if(res.length <= 0 || accountRes.length <= 0) {
             return false
@@ -90,10 +93,12 @@ class AuthEndHandshakeSubscriber extends Subscriber {
      */
     async validateWithMojangServers(action: Action, ctx: SessionContext): Promise<boolean> {
         // Get the latest handshake request for this user's account from the last minute
-        const [res] = await mysqlPool.query('SELECT * FROM sessions WHERE user=? AND token IS NULL AND handshake IS NOT NULL\
-        AND created > NOW() - INTERVAL 1 MINUTE ORDER BY CREATED DESC LIMIT 1', [ctx.accountId])
+        const [res] = <RowDataPacket[]> await mysqlPool.query('SELECT * FROM sessions WHERE user=? AND \
+        token IS NULL AND handshake IS NOT NULL AND created > NOW() - INTERVAL 1 MINUTE ORDER BY CREATED DESC LIMIT 1',
+        [ctx.accountId])
         // Get user's account data
-        const [accountRes] = await mysqlPool.query('SELECT * FROM accounts WHERE id=?', [ctx.accountId])
+        const [accountRes] = <RowDataPacket[]> await mysqlPool.query('SELECT * FROM accounts WHERE id=?',
+            [ctx.accountId])
 
         if(res.length <= 0 || accountRes.length <= 0) {
             return false
@@ -125,7 +130,8 @@ class AuthEndHandshakeSubscriber extends Subscriber {
      * @param ctx {SessionContext} Session context
      */
     async sendAuthCompleteAction(action: Action, ctx: SessionContext): Promise<void> {
-        const [accountRes] = await mysqlPool.query('SELECT * FROM accounts WHERE id=?', [ctx.accountId])
+        const [accountRes] = <RowDataPacket[]> await mysqlPool.query('SELECT * FROM accounts WHERE id=?',
+            [ctx.accountId])
         if(accountRes.length <= 0) {
             throw new Error('Account doesn\'t exist for the connection\'s account ID.')
         }
@@ -145,8 +151,8 @@ class AuthEndHandshakeSubscriber extends Subscriber {
         // Complete auth, marking the session to expire in 3 hours.
         const token = await this.generateSessionToken(ctx)
 
-        const [premiumRes] = await mysqlPool.query('SELECT * FROM premium_subscriptions WHERE user=? AND \
-            activate_date < NOW() AND expires > NOW() LIMIT 1', [ctx.accountId])
+        const [premiumRes] = <RowDataPacket[]> await mysqlPool.query('SELECT * FROM premium_subscriptions WHERE \
+            user=? AND activate_date < NOW() AND expires > NOW() LIMIT 1', [ctx.accountId])
 
         const premiumExpiration = premiumRes.length > 0 ? premiumRes[0].expires : null
         ctx.sendAction(new AuthCompleteAction(token, moment().add(3, 'h').toDate(),

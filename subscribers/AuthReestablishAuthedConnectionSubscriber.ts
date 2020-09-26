@@ -3,6 +3,7 @@ import SessionContext from '../SessionContext'
 import mysqlPool from '../mysqlPool'
 import * as moment from 'moment'
 import DisableModAction from '@quickplaymod/quickplay-actions-js/dist/actions/clientbound/DisableModAction'
+import {RowDataPacket} from 'mysql2'
 
 class AuthReestablishAuthedConnectionSubscriber extends Subscriber {
     async run(action: Action, ctx: SessionContext): Promise<void> {
@@ -12,8 +13,9 @@ class AuthReestablishAuthedConnectionSubscriber extends Subscriber {
             ctx.sendAction(new AuthFailedAction())
             return
         }
-        const [sessionRes] = await mysqlPool.query('SELECT * FROM sessions WHERE token=? AND created > NOW() - INTERVAL 3 HOUR',
-            [sessionToken])
+        const [sessionRes] = <RowDataPacket[]> await mysqlPool.query('SELECT * FROM sessions WHERE token=? AND \
+            created > NOW() - INTERVAL 3 HOUR',
+        [sessionToken])
         if(sessionRes.length <= 0) {
             console.log('Auth failed: Connection reestablishment contained a session token not in the database.')
             ctx.sendAction(new AuthFailedAction())
@@ -25,7 +27,8 @@ class AuthReestablishAuthedConnectionSubscriber extends Subscriber {
             ctx.sendAction(new AuthFailedAction())
             return
         }
-        const [accountRes] = await mysqlPool.query('SELECT * FROM accounts WHERE id=?', [accountId])
+        const [accountRes] = <RowDataPacket[]> await mysqlPool.query('SELECT * FROM accounts WHERE id=?',
+            [accountId])
         if(accountRes.length <= 0) {
             console.log('Auth failed: Session is linked to an account which doesn\'t exist anymore.')
             ctx.sendAction(new AuthFailedAction())
@@ -37,8 +40,8 @@ class AuthReestablishAuthedConnectionSubscriber extends Subscriber {
         }
 
         // Get Premium status info
-        const [premiumRes] = await mysqlPool.query('SELECT * FROM premium_subscriptions WHERE user=? AND \
-            activate_date < NOW() AND expires > NOW() LIMIT 1', [ctx.accountId])
+        const [premiumRes] = <RowDataPacket[]> await mysqlPool.query('SELECT * FROM premium_subscriptions WHERE \
+            user=? AND activate_date < NOW() AND expires > NOW() LIMIT 1', [ctx.accountId])
         const premiumExpiration = premiumRes.length > 0 ? premiumRes[0].expires : null
 
         const sessionExpiration = moment(sessionRes[0].created)

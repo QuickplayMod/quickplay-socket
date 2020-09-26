@@ -3,6 +3,7 @@ import SessionContext from '../SessionContext'
 import mysqlPool from '../mysqlPool'
 import StateAggregator from '../StateAggregator'
 import {getRedis} from '../redis'
+import {RowDataPacket} from 'mysql2'
 
 class AlterTranslationSubscriber extends Subscriber {
 
@@ -49,8 +50,8 @@ class AlterTranslationSubscriber extends Subscriber {
             return
         }
 
-        const [translationRes] = await mysqlPool.query('SELECT * FROM translations WHERE `key`=? AND lang=?',
-            [newTranslationKey, newTranslationLang])
+        const [translationRes] = <RowDataPacket[]> await mysqlPool.query(
+            'SELECT * FROM translations WHERE `key`=? AND lang=?', [newTranslationKey, newTranslationLang])
         try {
             if(translationRes.length > 0) {
                 await mysqlPool.query('UPDATE translations SET value=? WHERE `key`=? AND lang=?',

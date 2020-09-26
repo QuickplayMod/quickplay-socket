@@ -10,6 +10,7 @@ import SessionContext from '../SessionContext'
 import mysqlPool from '../mysqlPool'
 import StateAggregator from '../StateAggregator'
 import {getRedis} from '../redis'
+import {RowDataPacket} from 'mysql2'
 
 class AlterButtonSubscriber extends Subscriber {
 
@@ -25,7 +26,8 @@ class AlterButtonSubscriber extends Subscriber {
 
         const newButtonKey = action.getPayloadObjectAsString(0)
         const newButton = await Button.deserialize(action.getPayloadObjectAsString(1))
-        const [buttonRes] = await mysqlPool.query('SELECT * FROM buttons WHERE `key`=?', [newButtonKey])
+        const [buttonRes] = <RowDataPacket[]> await mysqlPool.query('SELECT * FROM buttons WHERE `key`=?',
+            [newButtonKey])
 
         const newAvailableOn = newButton.availableOn === undefined ? buttonRes[0].availableOn : newButton.availableOn
         const newTranslationKey = newButton.translationKey === undefined ? buttonRes[0].translationKey : newButton.translationKey

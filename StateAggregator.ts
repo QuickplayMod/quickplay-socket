@@ -3,6 +3,7 @@ import {sprintf} from 'sprintf-js'
 import {getRedis} from './redis'
 import mysqlPool from './mysqlPool'
 import pool from './mysqlPool'
+import {RowDataPacket} from 'mysql2'
 
 /**
  * Aggregator for stateful data from the database and Redis.
@@ -17,33 +18,33 @@ class StateAggregator {
     static async populate() : Promise<void> {
         const redis = await getRedis()
         await redis.del('aliasedActions')
-        const [actionResponse] = await pool.query('SELECT `key` FROM aliased_actions;')
+        const [actionResponse] = <RowDataPacket[]> await pool.query('SELECT `key` FROM aliased_actions;')
         for(let i = 0; i < actionResponse.length; i++) {
             const res = await  StateAggregator.pullAliasedAction(actionResponse[i].key)
             await redis.hset('aliasedActions', actionResponse[i].key, JSON.stringify(res))
         }
 
         await redis.del('buttons')
-        const [buttonResponse] = await pool.query('SELECT `key` FROM buttons;')
+        const [buttonResponse] = <RowDataPacket[]> await pool.query('SELECT `key` FROM buttons;')
         for(let i = 0; i < buttonResponse.length; i++) {
             const res = await StateAggregator.pullButton(buttonResponse[i].key)
             await redis.hset('buttons', buttonResponse[i].key, JSON.stringify(res))
         }
 
         await redis.del('screens')
-        const [screenResponse] = await pool.query('SELECT `key` FROM screens;')
+        const [screenResponse] = <RowDataPacket[]> await pool.query('SELECT `key` FROM screens;')
         for(let i = 0; i < screenResponse.length; i++) {
             const res = await StateAggregator.pullScreen(screenResponse[i].key)
             await redis.hset('screens', screenResponse[i].key, JSON.stringify(res))
         }
 
         // Delete all current language values
-        const [languages] = await pool.query('SELECT distinct(lang) from translations')
+        const [languages] = <RowDataPacket[]> await pool.query('SELECT distinct(lang) from translations')
         for(let i = 0; i < languages.length; i++) {
             await redis.del('lang:' + languages[i].lang)
         }
         // Insert all language values back into redis
-        const [translationResponse] = await pool.query('SELECT * from translations;')
+        const [translationResponse] = <RowDataPacket[]> await pool.query('SELECT * from translations;')
         for(let i = 0; i < translationResponse.length; i++) {
             await redis.hset('lang:' + translationResponse[i].lang, translationResponse[i].key, translationResponse[i].value)
         }
@@ -78,7 +79,8 @@ class StateAggregator {
      * @param key {string} The key of the action to pull.
      */
     static async pullAliasedAction(key: string) : Promise<AliasedAction> {
-        const [res] = await mysqlPool.query('SELECT * FROM aliased_actions WHERE `key`=?', [key])
+        const [res] = <RowDataPacket[]> await mysqlPool.query('SELECT * FROM aliased_actions WHERE `key`=?',
+            [key])
         if (res.length <= 0) {
             return null
         }
@@ -104,7 +106,7 @@ class StateAggregator {
      * @param key {string} The key of the button to pull.
      */
     static async pullButton(key: string) : Promise<Button> {
-        const [res] = await mysqlPool.query('SELECT * FROM buttons WHERE `key`=?', [key])
+        const [res] = <RowDataPacket[]> await mysqlPool.query('SELECT * FROM buttons WHERE `key`=?', [key])
 
         if (res.length <= 0) {
             return null
@@ -132,7 +134,7 @@ class StateAggregator {
      * @param key {string} The key of the screen to pull.
      */
     static async pullScreen(key: string) : Promise<Screen> {
-        const [res] = await mysqlPool.query('SELECT * FROM screens WHERE `key`=?', [key])
+        const [res] = <RowDataPacket[]> await mysqlPool.query('SELECT * FROM screens WHERE `key`=?', [key])
 
         if (res.length <= 0) {
             return null

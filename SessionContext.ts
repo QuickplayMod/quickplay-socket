@@ -1,18 +1,26 @@
 import * as crypto from 'crypto'
 import {
     Action,
+    AliasedAction,
     AuthBeginHandshakeAction,
+    Button,
     ChatComponent,
     ChatFormatting,
     Message,
+    Screen,
     SendChatCommandAction,
-    SendChatComponentAction
+    SendChatComponentAction,
+    SetAliasedActionAction,
+    SetButtonAction,
+    SetScreenAction,
+    SetTranslationAction
 } from '@quickplaymod/quickplay-actions-js'
 import mysqlPool from './mysqlPool'
 import PushEditHistoryEventAction
     from '@quickplaymod/quickplay-actions-js/dist/actions/clientbound/PushEditHistoryEventAction'
 import {getRedis} from './redis'
 import {sprintf} from 'sprintf-js'
+import {RowDataPacket} from 'mysql2'
 import WebSocket = require('ws');
 import Timer = NodeJS.Timer;
 
@@ -74,7 +82,8 @@ export default class SessionContext {
     authedResetTimeout: Timer = null
 
     async getIsAdmin() : Promise<boolean> {
-        const [res] = await mysqlPool.query('SELECT is_admin FROM accounts WHERE id=?', [this.accountId])
+        const [res] = <RowDataPacket[]> await mysqlPool.query(
+            'SELECT is_admin FROM accounts WHERE id=?', [this.accountId])
         if(res.length <= 0) {
             this.authed = false
         }
@@ -144,13 +153,14 @@ export default class SessionContext {
     }
 
     /**
-     * Send the (recent) edit history to the user. The user should only receive edit history if they are an admin.
+     * Send the (recent) edit history to the user. If this user is not an admin, nothing is sent.
      */
     async sendEditHistory(): Promise<void> {
         if(!this.authed || ! await this.getIsAdmin()) {
             return
         }
-        const [editHistory] = await mysqlPool.query('SELECT * from edit_log ORDER BY timestamp DESC LIMIT 1000')
+        const [editHistory] = <RowDataPacket[]> await mysqlPool.query(
+            'SELECT * from edit_log ORDER BY timestamp DESC LIMIT 1000')
 
         for(let i = 0; i < editHistory.length; i++) {
             const e = editHistory[i]
@@ -161,6 +171,63 @@ export default class SessionContext {
                 e.item_key, !!e.deleted, e.prev_version)
             this.sendAction(editAction)
         }
+    }
+
+    /**
+     * Send data about the screens, buttons, actions, and translations to the user. This should be done after an
+     * InitializeClientAction action because it depends on the user's language. If no language is present,
+     * English is used.
+     */
+    async sendGameListData() : Promise<void> {
+        const redis = await getRedis()
+        const screens = await redis.hgetall('screens')
+        const buttons = await redis.hgetall('buttons')
+        const aliasedActions = await redis.hgetall('aliasedActions')
+
+        // Translations default to English. If a translation is available in the user's language, it is
+        // overwritten with the translation value.
+        const translations = await redis.hgetall('lang:en_us')
+        if(this.data.language != 'en_us' && await redis.exists('lang:' + this.data.language)) {
+            const localTranslations = await redis.hgetall('lang:' + this.data.language)
+            for(const item in localTranslations) {
+                if(!localTranslations.hasOwnProperty(item)) {
+                    continue
+                }
+                translations[item] = localTranslations[item]
+            }
+        }
+
+        for(const translation in translations) {
+            if(!translations.hasOwnProperty(translation)) {
+                continue
+            }
+            this.sendAction(new SetTranslationAction(translation, this.data.language as string, translations[translation]))
+        }
+        for(const action in aliasedActions) {
+            if(!aliasedActions.hasOwnProperty(action)) {
+                continue
+            }
+            const parsedAction = await AliasedAction.deserialize(aliasedActions[action])
+            this.sendAction(new SetAliasedActionAction(parsedAction))
+        }
+        for(const button in buttons) {
+            if(!buttons.hasOwnProperty(button)) {
+                continue
+            }
+            const parsedButton = await Button.deserialize(buttons[button])
+            this.sendAction(new SetButtonAction(parsedButton))
+        }
+        for(const screen in screens) {
+            if(!screens.hasOwnProperty(screen) || !screens[screen]) {
+                continue
+            }
+            const parsedScreen = await Screen.deserialize(screens[screen])
+            this.sendAction(new SetScreenAction(parsedScreen))
+        }
+    }
+
+    async disable(reason: string) {
+        // TODO
     }
 
     /**

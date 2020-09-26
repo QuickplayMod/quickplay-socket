@@ -18,8 +18,17 @@ import {
     DeleteTranslationAction,
     InitializeClientAction,
     MigrateKeybindsAction,
+    RemoveAliasedActionAction,
+    RemoveButtonAction,
+    RemoveScreenAction,
+    RemoveTranslationAction,
     Resolver,
-    Screen
+    Screen,
+    SetAliasedActionAction,
+    SetButtonAction,
+    SetClientSettingsAction,
+    SetScreenAction,
+    SetTranslationAction
 } from '@quickplaymod/quickplay-actions-js'
 import StateAggregator from './StateAggregator'
 import SessionContext from './SessionContext'
@@ -35,16 +44,8 @@ import DeleteAliasedActionSubscriber from './subscribers/DeleteAliasedActionSubs
 import AlterAliasedActionSubscriber from './subscribers/AlterAliasedActionSubscriber'
 import AlterTranslationSubscriber from './subscribers/AlterTranslationSubscriber'
 import DeleteTranslationSubscriber from './subscribers/DeleteTranslationSubscriber'
-import SetAliasedActionAction from '@quickplaymod/quickplay-actions-js/dist/actions/clientbound/SetAliasedActionAction'
-import SetButtonAction from '@quickplaymod/quickplay-actions-js/dist/actions/clientbound/SetButtonAction'
-import SetScreenAction from '@quickplaymod/quickplay-actions-js/dist/actions/clientbound/SetScreenAction'
-import SetTranslationAction from '@quickplaymod/quickplay-actions-js/dist/actions/clientbound/SetTranslationAction'
-import RemoveAliasedActionAction
-    from '@quickplaymod/quickplay-actions-js/dist/actions/clientbound/RemoveAliasedActionAction'
-import RemoveButtonAction from '@quickplaymod/quickplay-actions-js/dist/actions/clientbound/RemoveButtonAction'
-import RemoveScreenAction from '@quickplaymod/quickplay-actions-js/dist/actions/clientbound/RemoveScreenAction'
-import RemoveTranslationAction
-    from '@quickplaymod/quickplay-actions-js/dist/actions/clientbound/RemoveTranslationAction'
+import SetClientSettingsSubscriber from './subscribers/SetClientSettingsSubscriber'
+import {DailyRewardClaimer} from '@quickplaymod/hypixel-daily-reward-claimer'
 
 let redis : IORedis.Redis
 let redisSub : IORedis.Redis
@@ -60,6 +61,9 @@ let actionBus : ActionBus
  * Begin the websocket server.
  */
 async function begin() {
+
+    const drc = new DailyRewardClaimer()
+    console.log(await drc.get('035265f2'))
 
     // Populate redis
     console.log('Beginning population.')
@@ -127,6 +131,7 @@ async function begin() {
     actionBus.subscribe(DeleteAliasedActionAction, new DeleteAliasedActionSubscriber())
     actionBus.subscribe(AlterTranslationAction, new AlterTranslationSubscriber())
     actionBus.subscribe(DeleteTranslationAction, new DeleteTranslationSubscriber())
+    actionBus.subscribe(SetClientSettingsAction, new SetClientSettingsSubscriber())
 
     ws.on('connection', async function connection(conn) {
 

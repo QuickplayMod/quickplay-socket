@@ -10,6 +10,7 @@ import SessionContext from '../SessionContext'
 import mysqlPool from '../mysqlPool'
 import StateAggregator from '../StateAggregator'
 import {getRedis} from '../redis'
+import {RowDataPacket} from 'mysql2'
 
 class AlterAliasedActionSubscriber extends Subscriber {
 
@@ -25,7 +26,8 @@ class AlterAliasedActionSubscriber extends Subscriber {
 
         const newAliasedActionKey = action.getPayloadObjectAsString(0)
         const newAliasedAction = await AliasedAction.deserialize(action.getPayloadObjectAsString(1))
-        const [aliasedActionRes] = await mysqlPool.query('SELECT * FROM aliased_actions WHERE `key`=?', [newAliasedActionKey])
+        const [aliasedActionRes] = <RowDataPacket[]> await mysqlPool.query('SELECT * FROM aliased_actions WHERE `key`=?',
+            [newAliasedActionKey])
 
         const newAvailableOn = newAliasedAction.availableOn === undefined ? aliasedActionRes[0].availableOn : newAliasedAction.availableOn
         const newAction = newAliasedAction.action === undefined ? aliasedActionRes[0].action : newAliasedAction.action

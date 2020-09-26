@@ -10,6 +10,7 @@ import SessionContext from '../SessionContext'
 import mysqlPool from '../mysqlPool'
 import StateAggregator from '../StateAggregator'
 import {getRedis} from '../redis'
+import {RowDataPacket} from 'mysql2'
 
 class AlterScreenSubscriber extends Subscriber {
 
@@ -25,7 +26,8 @@ class AlterScreenSubscriber extends Subscriber {
 
         const newScreenKey = action.getPayloadObjectAsString(0)
         const newScreen = await Screen.deserialize(action.getPayloadObjectAsString(1))
-        const [screenRes] = await mysqlPool.query('SELECT * FROM screens WHERE `key`=?', [newScreenKey])
+        const [screenRes] = <RowDataPacket[]> await mysqlPool.query('SELECT * FROM screens WHERE `key`=?',
+            [newScreenKey])
 
         const newScreenType = newScreen.screenType === undefined ? screenRes[0].screenType : newScreen.screenType
         const newAvailableOn = newScreen.availableOn === undefined ? screenRes[0].availableOn : newScreen.availableOn
