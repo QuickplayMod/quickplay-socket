@@ -21,6 +21,7 @@ import PushEditHistoryEventAction
 import {getRedis} from './redis'
 import {sprintf} from 'sprintf-js'
 import {RowDataPacket} from 'mysql2'
+import SetCurrentServerAction from '@quickplaymod/quickplay-actions-js/dist/actions/clientbound/SetCurrentServerAction'
 import WebSocket = require('ws');
 import Timer = NodeJS.Timer;
 
@@ -228,6 +229,15 @@ export default class SessionContext {
 
     async disable(reason: string) {
         // TODO
+    }
+
+    /**
+     * Notify the client of the recognized server that they have connected to.
+     * @param serverName Name/ID of the server they've connected to.
+     */
+    async setCurrentServer(serverName: string): Promise<void> {
+        this.data.currentServer = serverName
+        this.sendAction(new SetCurrentServerAction(serverName))
     }
 
     /**

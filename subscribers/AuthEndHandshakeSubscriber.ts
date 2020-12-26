@@ -157,7 +157,9 @@ class AuthEndHandshakeSubscriber extends Subscriber {
         const premiumExpiration = premiumRes.length > 0 ? premiumRes[0].expires : null
         ctx.sendAction(new AuthCompleteAction(token, moment().add(3, 'h').toDate(),
             accountRes[0].mc_uuid, accountRes[0].discord_id || '', accountRes[0].google_id || '',
-            !!accountRes[0].is_admin, (premiumRes.length > 0), premiumExpiration))
+            !!accountRes[0].is_admin, (premiumRes.length > 0), premiumExpiration,
+            // TODO Hypixel data calculation
+            'Test', 'Testing', true, false))
         ctx.authed = true
         ctx.authedResetTimeout = setTimeout(() => {
             ctx.authed = false

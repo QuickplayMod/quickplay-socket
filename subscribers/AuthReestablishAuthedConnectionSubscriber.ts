@@ -48,7 +48,9 @@ class AuthReestablishAuthedConnectionSubscriber extends Subscriber {
         const sessionTtl = moment().diff(sessionExpiration)
         ctx.sendAction(new AuthCompleteAction(sessionToken, sessionExpiration.toDate(),
             accountRes[0].mc_uuid, accountRes[0].discord_id || '', accountRes[0].google_id || '',
-            !!accountRes[0].is_admin, (premiumRes.length > 0), premiumExpiration))
+            !!accountRes[0].is_admin, (premiumRes.length > 0), premiumExpiration,
+            // TODO Hypixel data calculation
+            'test123', '4567', false, true))
 
         ctx.authed = true
         if(ctx.authedResetTimeout != null) {

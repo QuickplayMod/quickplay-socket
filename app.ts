@@ -24,6 +24,8 @@ import {
     RemoveTranslationAction,
     Resolver,
     Screen,
+    ServerJoinedAction,
+    ServerLeftAction,
     SetAliasedActionAction,
     SetButtonAction,
     SetClientSettingsAction,
@@ -45,6 +47,8 @@ import AlterAliasedActionSubscriber from './subscribers/AlterAliasedActionSubscr
 import AlterTranslationSubscriber from './subscribers/AlterTranslationSubscriber'
 import DeleteTranslationSubscriber from './subscribers/DeleteTranslationSubscriber'
 import SetClientSettingsSubscriber from './subscribers/SetClientSettingsSubscriber'
+import ServerJoinedSubscriber from './subscribers/ServerJoinedSubscriber'
+import ServerLeftSubscriber from './subscribers/ServerLeftSubscriber'
 
 let redis : IORedis.Redis
 let redisSub : IORedis.Redis
@@ -128,6 +132,8 @@ async function begin() {
     actionBus.subscribe(AlterTranslationAction, new AlterTranslationSubscriber())
     actionBus.subscribe(DeleteTranslationAction, new DeleteTranslationSubscriber())
     actionBus.subscribe(SetClientSettingsAction, new SetClientSettingsSubscriber())
+    actionBus.subscribe(ServerJoinedAction, new ServerJoinedSubscriber())
+    actionBus.subscribe(ServerLeftAction, new ServerLeftSubscriber())
 
     ws.on('connection', async function connection(conn) {
 
