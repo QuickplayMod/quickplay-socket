@@ -49,6 +49,10 @@ import DeleteTranslationSubscriber from './subscribers/DeleteTranslationSubscrib
 import SetClientSettingsSubscriber from './subscribers/SetClientSettingsSubscriber'
 import ServerJoinedSubscriber from './subscribers/ServerJoinedSubscriber'
 import ServerLeftSubscriber from './subscribers/ServerLeftSubscriber'
+import mysqlPool from './mysqlPool'
+import {RowDataPacket} from 'mysql2'
+import AddUserCountHistoryAction
+    from '@quickplaymod/quickplay-actions-js/dist/actions/clientbound/AddUserCountHistoryAction'
 
 let redis : IORedis.Redis
 let redisSub : IORedis.Redis
@@ -59,6 +63,14 @@ let actionBus : ActionBus
     redisSub = await getRedisSubscriber()
     await begin()
 })()
+
+/**
+ * Delete connection count data points in the database which are older than 24 hours.
+ */
+async function deleteOldConnectionDatapoints(): Promise<void> {
+    await mysqlPool.query('DELETE FROM connection_chart_datapoints WHERE ' +
+        '`timestamp` < NOW() - INTERVAL 1 DAY')
+}
 
 /**
  * Begin the websocket server.
@@ -134,6 +146,47 @@ async function begin() {
     actionBus.subscribe(SetClientSettingsAction, new SetClientSettingsSubscriber())
     actionBus.subscribe(ServerJoinedAction, new ServerJoinedSubscriber())
     actionBus.subscribe(ServerLeftAction, new ServerLeftSubscriber())
+
+    // Delete all data points when the server initially starts, and then every 24 hours.
+    setInterval(deleteOldConnectionDatapoints, 86400000)
+    await deleteOldConnectionDatapoints()
+
+    // Once a minute, try to add the current connection count to the database if it hasn't been added
+    // already within the past 5 minutes. This is the easiest solution to multiple instances of this script
+    // running, however it's not the most efficient.
+    setInterval(async () => {
+        const sqlConn = await mysqlPool.getConnection()
+        try {
+            // We lock the table so another instance of this program doesn't read or alter
+            // the table while we're working on it.
+            await sqlConn.query('LOCK TABLE connection_chart_datapoints WRITE')
+            const [resultsFromLastFive] = <RowDataPacket[]> await sqlConn.query('SELECT timestamp FROM ' +
+                'connection_chart_datapoints WHERE timestamp > NOW() - INTERVAL 5 MINUTE')
+            if(resultsFromLastFive.length <= 0) {
+                const connections = await redis.get('connections')
+                await sqlConn.query('INSERT INTO connection_chart_datapoints (connection_count) VALUES (?)', [connections])
+            }
+
+            // Send client the connection data from last hour (i.e. last two points). There can't be multiple points
+            // in the graph for the same timestamp, so this is not an issue.
+            const [resultsFromLastTen] = <RowDataPacket[]> await sqlConn.query('SELECT `timestamp`, connection_count FROM ' +
+                'connection_chart_datapoints WHERE `timestamp` > NOW() - INTERVAL 10 MINUTE')
+            for (const conn of ws.clients) {
+                if(await (conn as unknown as {ctx: SessionContext}).ctx.getIsAdmin()) {
+                    for(let i = 0; i < resultsFromLastTen.length; i++) {
+                        (conn as unknown as {ctx: SessionContext})
+                            .ctx.sendAction(new AddUserCountHistoryAction(new Date(resultsFromLastTen[i].timestamp),
+                                resultsFromLastTen[i].connection_count, false))
+                    }
+                }
+            }
+        } catch(e) {
+            console.error(e)
+        }
+
+        await sqlConn.query('UNLOCK TABLES')
+        sqlConn.release()
+    }, 60000)
 
     ws.on('connection', async function connection(conn) {
 

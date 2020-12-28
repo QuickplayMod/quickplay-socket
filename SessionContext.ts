@@ -22,6 +22,8 @@ import {getRedis} from './redis'
 import {sprintf} from 'sprintf-js'
 import {RowDataPacket} from 'mysql2'
 import SetCurrentServerAction from '@quickplaymod/quickplay-actions-js/dist/actions/clientbound/SetCurrentServerAction'
+import AddUserCountHistoryAction
+    from '@quickplaymod/quickplay-actions-js/dist/actions/clientbound/AddUserCountHistoryAction'
 import WebSocket = require('ws');
 import Timer = NodeJS.Timer;
 
@@ -175,6 +177,26 @@ export default class SessionContext {
     }
 
     /**
+     * Send the connection history from the last 7 days to the client if they're an admin
+     */
+    async sendConnectionHistory(): Promise<void> {
+        if(await this.getIsAdmin()) {
+            try {
+                const [resultsFromLastTen] = <RowDataPacket[]> await mysqlPool.query('SELECT `timestamp`, connection_count FROM ' +
+                    'connection_chart_datapoints WHERE `timestamp` > NOW() - INTERVAL 24 HOUR')
+                for(let i = 0; i < resultsFromLastTen.length; i++) {
+
+                    this.sendAction(new AddUserCountHistoryAction(new Date(resultsFromLastTen[i].timestamp),
+                        resultsFromLastTen[i].connection_count, i == 0))
+                }
+            } catch(e) {
+                console.error(e)
+            }
+
+        }
+    }
+
+    /**
      * Send data about the screens, buttons, actions, and translations to the user. This should be done after an
      * InitializeClientAction action because it depends on the user's language. If no language is present,
      * English is used.
@@ -227,7 +249,7 @@ export default class SessionContext {
         }
     }
 
-    async disable(reason: string) {
+    async disable(reason: string): Promise<void> {
         // TODO
     }
 

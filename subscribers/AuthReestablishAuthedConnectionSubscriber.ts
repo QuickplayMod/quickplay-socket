@@ -61,6 +61,7 @@ class AuthReestablishAuthedConnectionSubscriber extends Subscriber {
             ctx.authenticate()
         }, sessionTtl)
 
+        await ctx.sendConnectionHistory()
         await ctx.sendEditHistory()
     }
 

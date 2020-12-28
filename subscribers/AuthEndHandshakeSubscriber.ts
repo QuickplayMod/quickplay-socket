@@ -166,6 +166,7 @@ class AuthEndHandshakeSubscriber extends Subscriber {
             ctx.authenticate()
         }, 3 * 60 * 60 * 1000)
 
+        await ctx.sendConnectionHistory()
         await ctx.sendEditHistory()
     }
 
