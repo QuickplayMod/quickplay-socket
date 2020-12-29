@@ -12,6 +12,7 @@ import {
     SendChatComponentAction,
     SetAliasedActionAction,
     SetButtonAction,
+    SetCurrentUserCountAction,
     SetScreenAction,
     SetTranslationAction
 } from '@quickplaymod/quickplay-actions-js'
@@ -194,6 +195,36 @@ export default class SessionContext {
             }
 
         }
+    }
+
+    /**
+     * Start a loop to send the client current user count once every second while the connection is open (and while
+     * the user is admin). Checking admin status every second would be pretty pointlessly inefficient, so it's
+     * checked once every 2 minutes. The loop stops if the user is no longer admin or the connection closes.
+     */
+    async beginSendingCurrentUserCount(): Promise<void> {
+        if(!await this.getIsAdmin()) {
+            return
+        }
+        let loopsDone = 0
+        const checkAdminFrequency = 120
+        const currentUserCountTimer = setInterval(async () => {
+            loopsDone++
+            if(loopsDone >= checkAdminFrequency) {
+                if(!await this.getIsAdmin()) {
+                    clearInterval(currentUserCountTimer)
+                    return
+                }
+                loopsDone = 0
+            }
+            if(this.conn.readyState == this.conn.CLOSED ||
+                this.conn.readyState == this.conn.CLOSING) {
+                clearInterval(currentUserCountTimer)
+                return
+            }
+            const redis = await getRedis()
+            this.sendAction(new SetCurrentUserCountAction(parseInt(await redis.get('connections'))))
+        }, 1000)
     }
 
     /**
