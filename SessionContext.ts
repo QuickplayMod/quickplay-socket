@@ -6,6 +6,7 @@ import {
     Button,
     ChatComponent,
     ChatFormatting,
+    DisableModAction,
     Message,
     Screen,
     SendChatCommandAction,
@@ -281,7 +282,8 @@ export default class SessionContext {
     }
 
     async disable(reason: string): Promise<void> {
-        // TODO
+        this.sendAction(new DisableModAction(reason ? reason : 'No reason provided'))
+        this.conn.close()
     }
 
     /**
