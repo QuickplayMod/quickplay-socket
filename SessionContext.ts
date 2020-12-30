@@ -1,4 +1,5 @@
 import * as crypto from 'crypto'
+import * as Hypixel from 'hypixel-api'
 import {
     Action,
     AliasedAction,
@@ -28,6 +29,8 @@ import AddUserCountHistoryAction
     from '@quickplaymod/quickplay-actions-js/dist/actions/clientbound/AddUserCountHistoryAction'
 import WebSocket = require('ws');
 import Timer = NodeJS.Timer;
+
+const hypixelApi = new Hypixel(process.env.HYPIXEL_API_KEY)
 
 /**
  * Generate a handshake token and add it to the database for a specific session context.
@@ -87,12 +90,29 @@ export default class SessionContext {
     authedResetTimeout: Timer = null
 
     async getIsAdmin() : Promise<boolean> {
+        if(!this.authed) {
+            return false
+        }
+
         const [res] = <RowDataPacket[]> await mysqlPool.query(
             'SELECT is_admin FROM accounts WHERE id=?', [this.accountId])
         if(res.length <= 0) {
             this.authed = false
         }
         return !!res[0].is_admin
+    }
+
+    async getMinecraftUuid() : Promise<string> {
+        if(!this.authed) {
+            return null
+        }
+
+        const [res] = <RowDataPacket[]> await mysqlPool.query('SELECT mc_uuid FROM accounts WHERE id=?',
+            [this.accountId])
+        if(res.length <= 0) {
+            return null
+        }
+        return res[0].mc_uuid
     }
 
     /**
@@ -284,6 +304,67 @@ export default class SessionContext {
     async disable(reason: string): Promise<void> {
         this.sendAction(new DisableModAction(reason ? reason : 'No reason provided'))
         this.conn.close()
+    }
+
+    async getHypixelRankData(): Promise<{ rank: string, packageRank: string, isBuildTeam: boolean, isBuildTeamAdmin: boolean }> {
+        const redis = await getRedis()
+
+        const mcUuid = await this.getMinecraftUuid()
+        if(!mcUuid) {
+            return {
+                rank: 'NONE',
+                packageRank: 'NONE',
+                isBuildTeamAdmin: false,
+                isBuildTeam: false
+            }
+        }
+
+        try {
+            // Attempt to read the Redis cache. If there is a cached value for this user, use that.
+            const cachedValue = await redis.get('rankcache:' + mcUuid)
+            if(cachedValue) {
+                const parsedCachedValue = JSON.parse(cachedValue)
+                if(parsedCachedValue && parsedCachedValue.createdAt > Date.now() - 1200000) {
+                    return parsedCachedValue
+                }
+            }
+
+            // Get the player's data from the API
+            const hypixelRes = await hypixelApi.getPlayer('uuid', mcUuid)
+
+            // Calculate the user's package rank
+            let packageRank = 'NONE'
+            if(hypixelRes.player && hypixelRes.player.newPackageRank && hypixelRes.player.newPackageRank != 'NONE') {
+                packageRank = hypixelRes.player.newPackageRank
+            }
+            if(hypixelRes.player && hypixelRes.player.oldPackageRank && hypixelRes.player.oldPackageRank != 'NONE') {
+                packageRank = hypixelRes.player.oldPackageRank
+            }
+            if(hypixelRes.player && hypixelRes.player.monthlyPackageRank && hypixelRes.player.monthlyPackageRank != 'NONE') {
+                packageRank = hypixelRes.player.monthlyPackageRank
+            }
+
+            // Save result object to cache and return it
+            const result = {
+                createdAt: Date.now(),
+                rank: hypixelRes.rank || 'NONE',
+                packageRank: packageRank,
+                isBuildTeam: hypixelRes.buildTeam as boolean,
+                isBuildTeamAdmin: hypixelRes.buildTeamAdmin as boolean
+            }
+
+            await redis.set('rankcache:' + mcUuid, JSON.stringify(result))
+
+            return result
+        } catch(e) {
+            console.error(e)
+            return {
+                rank: 'NONE',
+                packageRank: 'NONE',
+                isBuildTeamAdmin: false,
+                isBuildTeam: false
+            }
+        }
     }
 
     /**
