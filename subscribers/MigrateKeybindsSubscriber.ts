@@ -16,9 +16,6 @@ class MigrateKeybindsSubscriber extends Subscriber {
         try {
             this.convert(action, ctx.data.language as string).then((result) => {
                 ctx.sendAction(result.action)
-                ctx.sendChatComponentMessage(new Message(new ChatComponent(
-                    'Migration complete!')
-                    .setColor(ChatFormatting.green)))
                 if(result.failedKeybinds && result.failedKeybinds.length > 0) {
                     ctx.sendChatComponentMessage(new Message(new ChatComponent(
                         'One or more of your Quickplay keybinds could not be converted. They have been removed ' +
