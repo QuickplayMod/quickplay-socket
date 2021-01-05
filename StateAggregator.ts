@@ -123,6 +123,7 @@ class StateAggregator {
         b.hypixelBuildTeamOnly = res[0].hypixelBuildTeamOnly
         b.hypixelBuildTeamAdminOnly = res[0].hypixelBuildTeamAdminOnly
         b.visibleInPartyMode = res[0].visibleInPartyMode
+        b.partyModeScopeTranslationKey = res[0].partyModeScopeTranslationKey
         const actions = res[0].actions || []
         for(let i = 0; i < actions.length; i++) {
             b.actions.push(actions[i])

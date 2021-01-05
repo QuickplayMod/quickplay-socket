@@ -47,6 +47,8 @@ class AlterButtonSubscriber extends Subscriber {
             buttonRes[0].hypixelBuildTeamAdminOnly : newButton.hypixelBuildTeamAdminOnly
         const newVisibleInPartyMode = newButton.visibleInPartyMode === undefined ?
             buttonRes[0].visibleInPartyMode : newButton.visibleInPartyMode
+        const newPartyModeScopeTranslationKey = newButton.partyModeScopeTranslationKey === undefined ?
+            buttonRes[0].partyModeScopeTranslationKey : newButton.partyModeScopeTranslationKey
 
         // Validation
         let validationFailed = false
@@ -76,19 +78,21 @@ class AlterButtonSubscriber extends Subscriber {
             if(buttonRes.length > 0) {
                 await mysqlPool.query('UPDATE buttons SET availableOn=?, translationKey=?, imageURL=?, actions=?, \
                     visible=?, adminOnly=?, hypixelLocrawRegex=?, hypixelRankRegex=?, hypixelPackageRankRegex=?, \
-                    hypixelBuildTeamOnly=?, hypixelBuildTeamAdminOnly=?, visibleInPartyMode=? WHERE `key`=?',
+                    hypixelBuildTeamOnly=?, hypixelBuildTeamAdminOnly=?, visibleInPartyMode=?, \
+                    partyModeScopeTranslationKey=? WHERE `key`=?',
                 [JSON.stringify(newAvailableOn), newTranslationKey, newImageUrl, JSON.stringify(newActions),
                     newVisible, newAdminOnly, JSON.stringify(newHypixelLocrawRegex), newHypixelRankRegex,
                     newHypixelPackageRankRegex, newHypixelBuildTeamOnly, newHypixelBuildTeamAdminOnly,
-                    newVisibleInPartyMode, newButtonKey])
+                    newVisibleInPartyMode, newPartyModeScopeTranslationKey, newButtonKey])
             } else {
                 await mysqlPool.query('INSERT INTO buttons (`key`, availableOn, translationKey, imageURL, actions, \
                     visible, adminOnly, hypixelLocrawRegex, hypixelRankRegex, hypixelPackageRankRegex, \
-                    hypixelBuildTeamOnly, hypixelBuildTeamAdminOnly, visibleInPartyMode) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                    hypixelBuildTeamOnly, hypixelBuildTeamAdminOnly, visibleInPartyMode, partyModeScopeTranslationKey) \
+                     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
                 [newButtonKey, JSON.stringify(newAvailableOn), newTranslationKey, newImageUrl,
                     JSON.stringify(newActions), newVisible, newAdminOnly, JSON.stringify(newHypixelLocrawRegex),
                     newHypixelRankRegex, newHypixelPackageRankRegex, newHypixelBuildTeamOnly,
-                    newHypixelBuildTeamAdminOnly, newVisibleInPartyMode])
+                    newHypixelBuildTeamAdminOnly, newVisibleInPartyMode, newPartyModeScopeTranslationKey])
             }
 
             // Log the edit to the edit log
