@@ -5,3 +5,4 @@ node_modules
 .env
 .npmrc
 docker-db.env
+asset-proxy.env

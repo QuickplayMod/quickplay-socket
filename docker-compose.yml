@@ -7,10 +7,17 @@ services:
     ports:
       - "54678:80"
     restart: unless-stopped
-    volumes:
-      - ./glyphs:/usr/src/app/glyphs
     env_file:
       - socket.env
+  proxy:
+    image: quickplaymod/quickplay-asset-proxy
+    ports:
+      - "32182:80"
+    restart: unless-stopped
+    depends_on:
+      - redis
+    env_file:
+      - .env
   redis:
     image: redis:6
     restart: unless-stopped
@@ -24,3 +31,14 @@ services:
       - ./db-data:/var/lib/mysql
     env_file:
       - docker-db.env
+  portal:
+    image: quickplaymod/quickplay-portal
+    depends_on:
+      - db
+      - redis
+      - socket
+    ports:
+      - "43515:80"
+    restart: unless-stopped
+    env_file:
+      - portal.env

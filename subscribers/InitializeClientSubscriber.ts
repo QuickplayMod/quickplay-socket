@@ -58,6 +58,7 @@ class InitializeClientSubscriber extends Subscriber {
 
         await ctx.authenticate()
         await ctx.sendGameListData()
+        await ctx.sendGlyphs()
     }
 
     /**

@@ -8,6 +8,7 @@ import {
     ChatComponent,
     ChatFormatting,
     DisableModAction,
+    Glyph,
     Message,
     Screen,
     SendChatCommandAction,
@@ -15,6 +16,7 @@ import {
     SetAliasedActionAction,
     SetButtonAction,
     SetCurrentUserCountAction,
+    SetGlyphForUserAction,
     SetScreenAction,
     SetTranslationAction
 } from '@quickplaymod/quickplay-actions-js'
@@ -94,12 +96,41 @@ export default class SessionContext {
             return false
         }
 
-        const [res] = <RowDataPacket[]> await mysqlPool.query(
-            'SELECT is_admin FROM accounts WHERE id=?', [this.accountId])
-        if(res.length <= 0) {
-            this.authed = false
+        // Admin state is cached for 5 minutes.
+        if(!this.data.adminStateCachedTimestamp || this.data.adminStateCachedTimestamp < Date.now() - 300000) {
+            const [res] = <RowDataPacket[]> await mysqlPool.query(
+                'SELECT is_admin FROM accounts WHERE id=?', [this.accountId])
+            if(res.length <= 0) {
+                this.authed = false
+                return false
+            }
+            this.data.adminStateCachedTimestamp = Date.now()
+            this.data.adminStateCachedValue = !!res[0].is_admin
         }
-        return !!res[0].is_admin
+
+        return this.data.adminStateCachedValue as boolean
+    }
+
+    async getIsPremium() : Promise<boolean> {
+        if(!this.authed) {
+            return false
+        }
+
+        // Premium state is cached for 5 minutes.
+        if(!this.data.premiumStateCachedTimestamp || this.data.premiumStateCachedTimestamp < Date.now() - 300000) {
+            // Count users who have an active premium subscription and aren't banned.
+            const [res] = <RowDataPacket[]> await mysqlPool.query('SELECT count(user) FROM \
+            premium_subscriptions p, accounts a WHERE \
+            p.user=? AND \
+            p.activate_date < NOW() AND \
+            p.expires > NOW() AND \
+            p.user = a.id AND \
+            a.banned = 0', [this.accountId])
+            this.data.premiumStateCachedTimestamp = Date.now()
+            this.data.premiumStateCachedValue = res.count > 0
+        }
+
+        return this.data.premiumStateCachedValue as boolean
     }
 
     async getMinecraftUuid() : Promise<string> {
@@ -107,12 +138,21 @@ export default class SessionContext {
             return null
         }
 
-        const [res] = <RowDataPacket[]> await mysqlPool.query('SELECT mc_uuid FROM accounts WHERE id=?',
-            [this.accountId])
-        if(res.length <= 0) {
-            return null
+        // Minecraft UUID is cached for 5 minutes.
+        if(!this.data.mcUUIDCachedTimestamp || this.data.mcUUIDCachedTimestamp < Date.now() - 300000) {
+            const [res] = <RowDataPacket[]> await mysqlPool.query('SELECT mc_uuid FROM accounts WHERE id=?',
+                [this.accountId])
+
+            this.data.mcUUIDCachedTimestamp = Date.now()
+
+            if(res.length <= 0) {
+                this.data.mcUUIDCachedValue = null
+            } else {
+                this.data.mcUUIDCachedValue = res[0].mc_uuid
+            }
         }
-        return res[0].mc_uuid
+
+        return this.data.mcUUIDCachedValue as string
     }
 
     /**
@@ -204,8 +244,8 @@ export default class SessionContext {
     async sendConnectionHistory(): Promise<void> {
         if(await this.getIsAdmin()) {
             try {
-                const [resultsFromLastTen] = <RowDataPacket[]> await mysqlPool.query('SELECT `timestamp`, connection_count FROM ' +
-                    'connection_chart_datapoints WHERE `timestamp` > NOW() - INTERVAL 24 HOUR')
+                const [resultsFromLastTen] = <RowDataPacket[]> await mysqlPool.query('SELECT `timestamp`, connection_count FROM \
+                    connection_chart_datapoints WHERE `timestamp` > NOW() - INTERVAL 24 HOUR')
                 for(let i = 0; i < resultsFromLastTen.length; i++) {
 
                     this.sendAction(new AddUserCountHistoryAction(new Date(resultsFromLastTen[i].timestamp),
@@ -301,8 +341,33 @@ export default class SessionContext {
         }
     }
 
+    /**
+     * Send user a list of all the glyphs. Unlike sendGameListData, this isn't language-dependent.
+     */
+    async sendGlyphs() : Promise<void> {
+        const redis = await getRedis()
+        const glyphs = await redis.hgetall('glyphs')
+
+        for(const uuid in glyphs) {
+            if(!glyphs.hasOwnProperty(uuid) || !glyphs[uuid]) {
+                continue
+            }
+            const glyph: Glyph = JSON.parse(glyphs[uuid])
+            let glyphPath = glyph.path
+            // Don't send glyph if this glyph does not contain a URL
+            if(!glyphPath) {
+                continue
+            }
+            if(!glyphPath.startsWith('http')) {
+                glyphPath = process.env.GLYPH_PROXY + glyph.path
+            }
+            this.sendAction(new SetGlyphForUserAction(glyph.uuid, glyphPath, glyph.height,
+                glyph.yOffset, glyph.displayInGames))
+        }
+    }
+
     async disable(reason: string): Promise<void> {
-        this.sendAction(new DisableModAction(reason ? reason : 'No reason provided'))
+        this.sendAction(new DisableModAction(reason || 'No reason provided'))
         this.conn.close()
     }
 
@@ -321,9 +386,10 @@ export default class SessionContext {
 
         try {
             // Attempt to read the Redis cache. If there is a cached value for this user, use that.
-            const cachedValue = await redis.get('rankcache:' + mcUuid)
+            const cachedValue = await redis.hget('rankcache', mcUuid)
             if(cachedValue) {
                 const parsedCachedValue = JSON.parse(cachedValue)
+                // 1200000 ms = 20 minutes
                 if(parsedCachedValue && parsedCachedValue.createdAt > Date.now() - 1200000) {
                     return parsedCachedValue
                 }
@@ -353,7 +419,7 @@ export default class SessionContext {
                 isBuildTeamAdmin: hypixelRes.buildTeamAdmin as boolean
             }
 
-            await redis.set('rankcache:' + mcUuid, JSON.stringify(result))
+            await redis.hset('rankcache', mcUuid, JSON.stringify(result))
 
             return result
         } catch(e) {

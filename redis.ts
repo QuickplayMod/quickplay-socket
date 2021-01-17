@@ -12,6 +12,7 @@ redisSubscriber.on('connect', async () => {
     console.log('Redis sub connected')
     await redisSubscriber.subscribe('conn-notif')
     await redisSubscriber.subscribe('list-change')
+    await redisSubscriber.subscribe('glyph-updates')
 })
 redis.on('connect', async () => {
     redisConnected = true

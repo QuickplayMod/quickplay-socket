@@ -6,6 +6,7 @@ import {
     AliasedAction,
     AlterAliasedActionAction,
     AlterButtonAction,
+    AlterGlyphAction,
     AlterScreenAction,
     AlterTranslationAction,
     AuthGoogleEndHandshakeAction,
@@ -16,6 +17,7 @@ import {
     DeleteButtonAction,
     DeleteScreenAction,
     DeleteTranslationAction,
+    Glyph,
     InitializeClientAction,
     MigrateKeybindsAction,
     RemoveAliasedActionAction,
@@ -29,6 +31,8 @@ import {
     SetAliasedActionAction,
     SetButtonAction,
     SetClientSettingsAction,
+    SetCurrentUserCountAction,
+    SetGlyphForUserAction,
     SetScreenAction,
     SetTranslationAction
 } from '@quickplaymod/quickplay-actions-js'
@@ -53,6 +57,7 @@ import mysqlPool from './mysqlPool'
 import {RowDataPacket} from 'mysql2'
 import AddUserCountHistoryAction
     from '@quickplaymod/quickplay-actions-js/dist/actions/clientbound/AddUserCountHistoryAction'
+import AlterGlyphSubscriber from './subscribers/AlterGlyphSubscriber'
 
 let redis : IORedis.Redis
 let redisSub : IORedis.Redis
@@ -85,46 +90,80 @@ async function begin() {
     // Create websocket server
     const ws = new WebSocket.Server({ port: 80 })
 
-    // Handle changes in the aliased action/screen/button/translation lists
+    // Timestamp of when this socket last sent out the current user count to all connected admin clients
+    const userCountLastSentToAdminsAt = 0
+    // How often user count should be sent to admins when it changes, in milliseconds
+    const userCountUpdateFrequency = 500
+
+    // All incoming messages from Redis subscriptions are handled here
     redisSub.on('message', async (channel, message) => {
-        if(channel != 'list-change') {
-            return
-        }
-        const splitMsg = message.split(',')
-        const id = splitMsg[0]
-        const key = splitMsg[1]
-        let buf
+        if(channel == 'list-change') {
+            const splitMsg = message.split(',')
+            const id = splitMsg[0]
+            const key = splitMsg[1]
+            let buf
 
-        if(id == AlterAliasedActionAction.id) {
-            const aa = await AliasedAction.deserialize(await redis.hget('aliasedActions', key))
-            buf = new SetAliasedActionAction(aa).build()
-        } else if(id == AlterButtonAction.id) {
-            const button = await Button.deserialize(await redis.hget('buttons', key))
-            buf = new SetButtonAction(button).build()
-        } else if(id == AlterScreenAction.id) {
-            const scr = await Screen.deserialize(await redis.hget('screens', key))
-            buf = new SetScreenAction(scr).build()
-        } else if(id == AlterTranslationAction.id) {
-            const lang = splitMsg[2]
-            const val = await redis.hget('lang:' + lang, key)
-            buf = new SetTranslationAction(key, lang, val).build()
-        } else if(id == DeleteAliasedActionAction.id) {
-            buf = new RemoveAliasedActionAction(key).build()
-        } else if(id == DeleteButtonAction.id) {
-            buf = new RemoveButtonAction(key).build()
-        } else if(id == DeleteScreenAction.id) {
-            buf = new RemoveScreenAction(key).build()
-        } else if(id == DeleteTranslationAction.id) {
-            const lang = splitMsg[2]
-            buf = new RemoveTranslationAction(key, lang).build()
-        }
+            if(id == AlterAliasedActionAction.id) {
+                const aa = await AliasedAction.deserialize(await redis.hget('aliasedActions', key))
+                buf = new SetAliasedActionAction(aa).build()
+            } else if(id == AlterButtonAction.id) {
+                const button = await Button.deserialize(await redis.hget('buttons', key))
+                buf = new SetButtonAction(button).build()
+            } else if(id == AlterScreenAction.id) {
+                const scr = await Screen.deserialize(await redis.hget('screens', key))
+                buf = new SetScreenAction(scr).build()
+            } else if(id == AlterTranslationAction.id) {
+                const lang = splitMsg[2]
+                const val = await redis.hget('lang:' + lang, key)
+                buf = new SetTranslationAction(key, lang, val).build()
+            } else if(id == DeleteAliasedActionAction.id) {
+                buf = new RemoveAliasedActionAction(key).build()
+            } else if(id == DeleteButtonAction.id) {
+                buf = new RemoveButtonAction(key).build()
+            } else if(id == DeleteScreenAction.id) {
+                buf = new RemoveScreenAction(key).build()
+            } else if(id == DeleteTranslationAction.id) {
+                const lang = splitMsg[2]
+                buf = new RemoveTranslationAction(key, lang).build()
+            }
 
-        ws.clients.forEach((conn) => {
-            if(conn.readyState !== WebSocket.OPEN) {
+            ws.clients.forEach((conn) => {
+                if(conn.readyState !== WebSocket.OPEN) {
+                    return
+                }
+                conn.send(buf)
+            })
+        } else if(channel == 'glyph-updates') {
+            const newGlyph: Glyph = JSON.parse(message)
+            let glyphPath = newGlyph.path
+            if(glyphPath && !glyphPath.startsWith('http')) {
+                glyphPath = process.env.GLYPH_PROXY + newGlyph.path
+            }
+            const glyphUpdateBuffer = new SetGlyphForUserAction(newGlyph.uuid, glyphPath, newGlyph.height,
+                newGlyph.yOffset, newGlyph.displayInGames).build()
+            ws.clients.forEach((conn) => {
+                if(conn.readyState !== WebSocket.OPEN) {
+                    return
+                }
+                conn.send(glyphUpdateBuffer)
+            })
+        } else if(channel == 'conn-notif') {
+            const now = Date.now()
+            if(now - userCountLastSentToAdminsAt < userCountUpdateFrequency) {
                 return
             }
-            conn.send(buf)
-        })
+
+            const newUserCountAction = new SetCurrentUserCountAction(parseInt(message))
+            for (const conn of ws.clients) {
+                if(conn.readyState !== WebSocket.OPEN) {
+                    continue
+                }
+                if(! await (conn as unknown as {ctx: SessionContext}).ctx.getIsAdmin()) {
+                    continue
+                }
+                conn.send(newUserCountAction.build())
+            }
+        }
     })
 
     // Create new action bus and add all subscriptions
@@ -146,6 +185,7 @@ async function begin() {
     actionBus.subscribe(SetClientSettingsAction, new SetClientSettingsSubscriber())
     actionBus.subscribe(ServerJoinedAction, new ServerJoinedSubscriber())
     actionBus.subscribe(ServerLeftAction, new ServerLeftSubscriber())
+    actionBus.subscribe(AlterGlyphAction, new AlterGlyphSubscriber())
 
     // Delete all data points when the server initially starts, and then every 24 hours.
     setInterval(deleteOldConnectionDatapoints, 86400000)
@@ -160,8 +200,8 @@ async function begin() {
             // We lock the table so another instance of this program doesn't read or alter
             // the table while we're working on it.
             await sqlConn.query('LOCK TABLE connection_chart_datapoints WRITE')
-            const [resultsFromLastFive] = <RowDataPacket[]> await sqlConn.query('SELECT timestamp FROM ' +
-                'connection_chart_datapoints WHERE timestamp > NOW() - INTERVAL 5 MINUTE')
+            const [resultsFromLastFive] = <RowDataPacket[]> await sqlConn.query('SELECT timestamp FROM \
+                connection_chart_datapoints WHERE timestamp > NOW() - INTERVAL 5 MINUTE')
             if(resultsFromLastFive.length <= 0) {
                 const connections = await redis.get('connections')
                 await sqlConn.query('INSERT INTO connection_chart_datapoints (connection_count) VALUES (?)', [connections])
@@ -169,8 +209,8 @@ async function begin() {
 
             // Send client the connection data from last hour (i.e. last two points). There can't be multiple points
             // in the graph for the same timestamp, so this is not an issue.
-            const [resultsFromLastTen] = <RowDataPacket[]> await sqlConn.query('SELECT `timestamp`, connection_count FROM ' +
-                'connection_chart_datapoints WHERE `timestamp` > NOW() - INTERVAL 10 MINUTE')
+            const [resultsFromLastTen] = <RowDataPacket[]> await sqlConn.query('SELECT `timestamp`, connection_count FROM \
+                connection_chart_datapoints WHERE `timestamp` > NOW() - INTERVAL 10 MINUTE')
             for (const conn of ws.clients) {
                 if(await (conn as unknown as {ctx: SessionContext}).ctx.getIsAdmin()) {
                     for(let i = 0; i < resultsFromLastTen.length; i++) {

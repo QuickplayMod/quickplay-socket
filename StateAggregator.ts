@@ -38,6 +38,19 @@ class StateAggregator {
             await redis.hset('screens', screenResponse[i].key, JSON.stringify(res))
         }
 
+        await redis.del('glyphs')
+        // Get all glyph data for users which have an active Premium subscription and aren't banned.
+        const [glyphResponse] = <RowDataPacket[]> await pool.query('SELECT g.uuid, g.height, g.yOffset, g.path, g.displayInGames \
+            FROM glyphs g, premium_subscriptions p, accounts a WHERE \
+            p.activate_date > NOW() AND \
+            p.expires < NOW() AND \
+            p.user = a.id AND \
+            a.mc_uuid = g.uuid AND \
+            a.banned = 0')
+        for(let i = 0; i < glyphResponse.length; i++) {
+            await redis.hset('glyphs', glyphResponse[i].uuid, JSON.stringify(glyphResponse[i]))
+        }
+
         // Delete all current language values
         const [languages] = <RowDataPacket[]> await pool.query('SELECT distinct(lang) from translations')
         for(let i = 0; i < languages.length; i++) {

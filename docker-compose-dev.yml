@@ -10,7 +10,6 @@ services:
       - "5859:5859"
     restart: unless-stopped
     volumes:
-      - ../glyphs-volume:/usr/src/app/glyphs
       - .:/usr/src/app
       - /usr/src/app/node_modules
     command: npm run dev
@@ -23,6 +22,15 @@ services:
     restart: unless-stopped
     volumes:
       - ../redis-volume:/var/lib/redis
+  proxy:
+    image: quickplaymod/quickplay-asset-proxy
+    ports:
+      - "32182:80"
+    restart: unless-stopped
+    depends_on:
+      - redis
+    env_file:
+      - .env
   db:
     image: mysql:8
     ports:
@@ -33,3 +41,14 @@ services:
       - ../db-volume:/var/lib/mysql
     env_file:
       - docker-db.env
+  portal:
+    image: quickplaymod/quickplay-portal
+    depends_on:
+      - db
+      - redis
+      - socket
+    ports:
+      - "43515:80"
+    restart: unless-stopped
+    env_file:
+      - portal.env
