@@ -13,6 +13,7 @@ redisSubscriber.on('connect', async () => {
     await redisSubscriber.subscribe('conn-notif')
     await redisSubscriber.subscribe('list-change')
     await redisSubscriber.subscribe('glyph-updates')
+    await redisSubscriber.subscribe('glyph-removals')
 })
 redis.on('connect', async () => {
     redisConnected = true

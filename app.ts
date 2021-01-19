@@ -15,6 +15,7 @@ import {
     Button,
     DeleteAliasedActionAction,
     DeleteButtonAction,
+    DeleteGlyphAction,
     DeleteScreenAction,
     DeleteTranslationAction,
     Glyph,
@@ -22,6 +23,7 @@ import {
     MigrateKeybindsAction,
     RemoveAliasedActionAction,
     RemoveButtonAction,
+    RemoveGlyphAction,
     RemoveScreenAction,
     RemoveTranslationAction,
     Resolver,
@@ -58,6 +60,7 @@ import {RowDataPacket} from 'mysql2'
 import AddUserCountHistoryAction
     from '@quickplaymod/quickplay-actions-js/dist/actions/clientbound/AddUserCountHistoryAction'
 import AlterGlyphSubscriber from './subscribers/AlterGlyphSubscriber'
+import DeleteGlyphSubscriber from './subscribers/DeleteGlyphSubscriber'
 
 let redis : IORedis.Redis
 let redisSub : IORedis.Redis
@@ -103,35 +106,43 @@ async function begin() {
             const key = splitMsg[1]
             let buf
 
-            if(id == AlterAliasedActionAction.id) {
+            if (id == AlterAliasedActionAction.id) {
                 const aa = await AliasedAction.deserialize(await redis.hget('aliasedActions', key))
                 buf = new SetAliasedActionAction(aa).build()
-            } else if(id == AlterButtonAction.id) {
+            } else if (id == AlterButtonAction.id) {
                 const button = await Button.deserialize(await redis.hget('buttons', key))
                 buf = new SetButtonAction(button).build()
-            } else if(id == AlterScreenAction.id) {
+            } else if (id == AlterScreenAction.id) {
                 const scr = await Screen.deserialize(await redis.hget('screens', key))
                 buf = new SetScreenAction(scr).build()
-            } else if(id == AlterTranslationAction.id) {
+            } else if (id == AlterTranslationAction.id) {
                 const lang = splitMsg[2]
                 const val = await redis.hget('lang:' + lang, key)
                 buf = new SetTranslationAction(key, lang, val).build()
-            } else if(id == DeleteAliasedActionAction.id) {
+            } else if (id == DeleteAliasedActionAction.id) {
                 buf = new RemoveAliasedActionAction(key).build()
-            } else if(id == DeleteButtonAction.id) {
+            } else if (id == DeleteButtonAction.id) {
                 buf = new RemoveButtonAction(key).build()
-            } else if(id == DeleteScreenAction.id) {
+            } else if (id == DeleteScreenAction.id) {
                 buf = new RemoveScreenAction(key).build()
-            } else if(id == DeleteTranslationAction.id) {
+            } else if (id == DeleteTranslationAction.id) {
                 const lang = splitMsg[2]
                 buf = new RemoveTranslationAction(key, lang).build()
             }
 
             ws.clients.forEach((conn) => {
-                if(conn.readyState !== WebSocket.OPEN) {
+                if (conn.readyState !== WebSocket.OPEN) {
                     return
                 }
                 conn.send(buf)
+            })
+        } else if(channel == 'glyph-removals') {
+            const glyphUpdateBuffer = new RemoveGlyphAction(message).build()
+            ws.clients.forEach((conn) => {
+                if(conn.readyState !== WebSocket.OPEN) {
+                    return
+                }
+                conn.send(glyphUpdateBuffer)
             })
         } else if(channel == 'glyph-updates') {
             const newGlyph: Glyph = JSON.parse(message)
@@ -186,6 +197,7 @@ async function begin() {
     actionBus.subscribe(ServerJoinedAction, new ServerJoinedSubscriber())
     actionBus.subscribe(ServerLeftAction, new ServerLeftSubscriber())
     actionBus.subscribe(AlterGlyphAction, new AlterGlyphSubscriber())
+    actionBus.subscribe(DeleteGlyphAction, new DeleteGlyphSubscriber())
 
     // Delete all data points when the server initially starts, and then every 24 hours.
     setInterval(deleteOldConnectionDatapoints, 86400000)
