@@ -9,28 +9,26 @@ import {
 } from '@quickplaymod/quickplay-actions-js'
 import SessionContext from '../SessionContext'
 import {getRedis} from '../redis'
+import StateAggregator from '../StateAggregator'
 
 class MigrateKeybindsSubscriber extends Subscriber {
 
     async run(action: Action, ctx: SessionContext): Promise<void> {
         try {
-            this.convert(action, ctx.data.language as string).then((result) => {
-                ctx.sendAction(result.action)
-                if(result.failedKeybinds && result.failedKeybinds.length > 0) {
-                    ctx.sendChatComponentMessage(new Message(new ChatComponent(
-                        'One or more of your Quickplay keybinds could not be converted. They have been removed ' +
-                        'from your keybinds. Sorry for the inconvenience! ' +
-                        'Failed keybinds:\n\n' + result.failedKeybinds.join(',\n'))
-                        .setColor(ChatFormatting.yellow), true))
-                }
-            }).catch(e => {
-                throw e
-            })
+            const result = await this.convert(action, ctx.data.language as string)
+            ctx.sendAction(result.action)
+            if(result.failedKeybinds && result.failedKeybinds.length > 0) {
+                ctx.sendChatComponentMessage(new Message(
+                    (await StateAggregator.translateComponent(ctx.data.language as string || 'en_us',
+                        'quickplay.migrationPartiallyFailed', result.failedKeybinds.join(',\n')))
+                        .setColor(ChatFormatting.yellow), true
+                ))
+            }
 
         } catch(e) {
             console.log(e)
             ctx.sendChatComponentMessage(new Message(new ChatComponent(
-                'Something went wrong while migrating your keybinds. Sorry for the inconvenience!')
+                'quickplay.keybinds.migratingFailed')
                 .setColor(ChatFormatting.red), true))
         }
     }
