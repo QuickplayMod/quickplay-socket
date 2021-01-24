@@ -20,7 +20,7 @@ class MigrateKeybindsSubscriber extends Subscriber {
             if(result.failedKeybinds && result.failedKeybinds.length > 0) {
                 ctx.sendChatComponentMessage(new Message(
                     (await StateAggregator.translateComponent(ctx.data.language as string || 'en_us',
-                        'quickplay.migrationPartiallyFailed', result.failedKeybinds.join(',\n')))
+                        'quickplay.keybinds.migrationPartiallyFailed', result.failedKeybinds.join(',\n')))
                         .setColor(ChatFormatting.yellow), true
                 ))
             }
