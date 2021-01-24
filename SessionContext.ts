@@ -119,7 +119,7 @@ export default class SessionContext {
         // Premium state is cached for 5 minutes.
         if(!this.data.premiumStateCachedTimestamp || this.data.premiumStateCachedTimestamp < Date.now() - 300000) {
             // Count users who have an active premium subscription and aren't banned.
-            const [res] = <RowDataPacket[]> await mysqlPool.query('SELECT count(user) FROM \
+            const [res] = <RowDataPacket[]> await mysqlPool.query('SELECT count(user) AS count FROM \
             premium_subscriptions p, accounts a WHERE \
             p.user=? AND \
             p.activate_date < NOW() AND \
@@ -127,7 +127,7 @@ export default class SessionContext {
             p.user = a.id AND \
             a.banned = 0', [this.accountId])
             this.data.premiumStateCachedTimestamp = Date.now()
-            this.data.premiumStateCachedValue = res.count > 0
+            this.data.premiumStateCachedValue = res[0].count > 0
         }
 
         return this.data.premiumStateCachedValue as boolean
