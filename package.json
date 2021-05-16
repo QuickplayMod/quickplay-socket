@@ -7,31 +7,32 @@
     "dev": "npx nodemon -w . --inspect=0.0.0.0:5859 -L build/app.js"
   },
   "dependencies": {
-    "@azure/storage-file-share": "^12.4.0",
-    "@quickplaymod/quickplay-actions-js": "^1.6.6",
-    "aws-sdk": "^2.829.0",
+    "@azure/storage-file-share": "^12.5.0",
+    "@quickplaymod/hypixel-daily-reward-claimer": "^1.0.2",
+    "@quickplaymod/quickplay-actions-js": "^1.6.8",
+    "aws-sdk": "^2.907.0",
     "axios": "^0.21.1",
-    "google-auth-library": "^6.1.4",
+    "google-auth-library": "^6.1.6",
     "hypixel-api": "^1.2.0",
-    "ioredis": "^4.19.4",
+    "ioredis": "^4.27.2",
     "moment": "^2.29.1",
     "mysql2": "^2.2.5",
-    "sharp": "^0.27.0",
+    "sharp": "^0.27.2",
     "sprintf-js": "^1.1.2",
     "valid-url": "^1.0.9",
-    "ws": "^7.4.2"
+    "ws": "^7.4.5"
   },
   "devDependencies": {
     "@types/axios": "^0.14.0",
-    "@types/ioredis": "^4.19.1",
+    "@types/ioredis": "^4.26.3",
     "@types/moment": "^2.13.0",
-    "@types/node": "^14.14.22",
+    "@types/node": "^14.14.45",
     "@types/sprintf-js": "^1.1.2",
-    "@types/ws": "^7.4.0",
+    "@types/ws": "^7.4.4",
     "@typescript-eslint/eslint-plugin": "^3.10.1",
     "@typescript-eslint/parser": "^3.10.1",
-    "eslint": "^7.18.0",
+    "eslint": "^7.26.0",
     "nodemon": "^2.0.7",
-    "typescript": "^3.9.7"
+    "typescript": "^3.9.9"
   }
 }

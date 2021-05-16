@@ -7,6 +7,7 @@ import {
     AlterAliasedActionAction,
     AlterButtonAction,
     AlterGlyphAction,
+    AlterRegexAction,
     AlterScreenAction,
     AlterTranslationAction,
     AuthGoogleEndHandshakeAction,
@@ -16,6 +17,7 @@ import {
     DeleteAliasedActionAction,
     DeleteButtonAction,
     DeleteGlyphAction,
+    DeleteRegexAction,
     DeleteScreenAction,
     DeleteTranslationAction,
     Glyph,
@@ -24,6 +26,7 @@ import {
     RemoveAliasedActionAction,
     RemoveButtonAction,
     RemoveGlyphAction,
+    RemoveRegexAction,
     RemoveScreenAction,
     RemoveTranslationAction,
     Resolver,
@@ -35,6 +38,7 @@ import {
     SetClientSettingsAction,
     SetCurrentUserCountAction,
     SetGlyphForUserAction,
+    SetRegexAction,
     SetScreenAction,
     SetTranslationAction
 } from '@quickplaymod/quickplay-actions-js'
@@ -61,6 +65,8 @@ import AddUserCountHistoryAction
     from '@quickplaymod/quickplay-actions-js/dist/actions/clientbound/AddUserCountHistoryAction'
 import AlterGlyphSubscriber from './subscribers/AlterGlyphSubscriber'
 import DeleteGlyphSubscriber from './subscribers/DeleteGlyphSubscriber'
+import AlterRegexSubscriber from './subscribers/AlterRegexSubscriber'
+import DeleteRegexSubscriber from './subscribers/DeleteRegexSubscriber'
 
 let redis : IORedis.Redis
 let redisSub : IORedis.Redis
@@ -119,12 +125,16 @@ async function begin() {
                 const lang = splitMsg[2]
                 const val = await redis.hget('lang:' + lang, key)
                 buf = new SetTranslationAction(key, lang, val).build()
+            } else if (id == AlterRegexAction.id) {
+                buf = new SetRegexAction(key, await redis.hget('regexes', key))
             } else if (id == DeleteAliasedActionAction.id) {
                 buf = new RemoveAliasedActionAction(key).build()
             } else if (id == DeleteButtonAction.id) {
                 buf = new RemoveButtonAction(key).build()
             } else if (id == DeleteScreenAction.id) {
                 buf = new RemoveScreenAction(key).build()
+            } else if (id == DeleteRegexAction.id) {
+                buf = new RemoveRegexAction(key).build()
             } else if (id == DeleteTranslationAction.id) {
                 const lang = splitMsg[2]
                 buf = new RemoveTranslationAction(key, lang).build()
@@ -198,6 +208,8 @@ async function begin() {
     actionBus.subscribe(ServerLeftAction, new ServerLeftSubscriber())
     actionBus.subscribe(AlterGlyphAction, new AlterGlyphSubscriber())
     actionBus.subscribe(DeleteGlyphAction, new DeleteGlyphSubscriber())
+    actionBus.subscribe(AlterRegexAction, new AlterRegexSubscriber())
+    actionBus.subscribe(DeleteRegexSubscriber, new DeleteRegexSubscriber())
 
     // Delete all data points when the server initially starts, and then every 24 hours.
     setInterval(deleteOldConnectionDatapoints, 86400000)

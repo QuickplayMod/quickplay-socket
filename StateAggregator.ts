@@ -38,6 +38,12 @@ class StateAggregator {
             await redis.hset('screens', screenResponse[i].key, JSON.stringify(res))
         }
 
+        await redis.del('regexes')
+        const [regexResponse] = <RowDataPacket[]> await pool.query('SELECT * FROM regexes;')
+        for(let i = 0; i < regexResponse.length; i++) {
+            await redis.hset('regexes', regexResponse[i].key, regexResponse[i].value)
+        }
+
         await redis.del('glyphs')
         // Get all glyph data for users which have an active Premium subscription and aren't banned.
         const [glyphResponse] = <RowDataPacket[]> await pool.query('SELECT g.uuid, g.height, g.yOffset, g.path, g.displayInGames \

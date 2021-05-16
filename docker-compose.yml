@@ -3,7 +3,7 @@ services:
   socket:
     depends_on:
       - db
-    image: quickplaymod/quickplay-socket
+    image: docker.pkg.github.com/quickplaymod/quickplay-socket-official/quickplay-socket
     ports:
       - "54678:80"
     restart: unless-stopped

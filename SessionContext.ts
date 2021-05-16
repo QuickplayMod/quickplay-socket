@@ -17,6 +17,7 @@ import {
     SetButtonAction,
     SetCurrentUserCountAction,
     SetGlyphForUserAction,
+    SetRegexAction,
     SetScreenAction,
     SetTranslationAction
 } from '@quickplaymod/quickplay-actions-js'
@@ -298,6 +299,7 @@ export default class SessionContext {
         const screens = await redis.hgetall('screens')
         const buttons = await redis.hgetall('buttons')
         const aliasedActions = await redis.hgetall('aliasedActions')
+        const regexes = await redis.hgetall('regexes')
 
         // Translations default to English. If a translation is available in the user's language, it is
         // overwritten with the translation value.
@@ -317,6 +319,12 @@ export default class SessionContext {
                 continue
             }
             this.sendAction(new SetTranslationAction(translation, this.data.language as string, translations[translation]))
+        }
+        for(const regex in regexes) {
+            if(!regexes.hasOwnProperty(regex)) {
+                continue
+            }
+            this.sendAction(new SetRegexAction(regex, regexes[regex]))
         }
         for(const action in aliasedActions) {
             if(!aliasedActions.hasOwnProperty(action)) {
