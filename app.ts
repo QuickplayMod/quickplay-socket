@@ -209,7 +209,7 @@ async function begin() {
     actionBus.subscribe(AlterGlyphAction, new AlterGlyphSubscriber())
     actionBus.subscribe(DeleteGlyphAction, new DeleteGlyphSubscriber())
     actionBus.subscribe(AlterRegexAction, new AlterRegexSubscriber())
-    actionBus.subscribe(DeleteRegexSubscriber, new DeleteRegexSubscriber())
+    actionBus.subscribe(DeleteRegexAction, new DeleteRegexSubscriber())
 
     // Delete all data points when the server initially starts, and then every 24 hours.
     setInterval(deleteOldConnectionDatapoints, 86400000)
