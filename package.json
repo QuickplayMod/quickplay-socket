@@ -8,7 +8,6 @@
   },
   "dependencies": {
     "@azure/storage-file-share": "^12.5.0",
-    "@quickplaymod/hypixel-daily-reward-claimer": "^1.0.2",
     "@quickplaymod/quickplay-actions-js": "^1.6.8",
     "aws-sdk": "^2.907.0",
     "axios": "^0.21.1",
