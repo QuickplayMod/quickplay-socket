@@ -1,4 +1,4 @@
-import {Action, AlterTranslationAction, ChatFormatting, Message, Subscriber} from '@quickplaymod/quickplay-actions-js'
+import {Action, AlterRegexAction, ChatFormatting, Message, Subscriber} from '@quickplaymod/quickplay-actions-js'
 import SessionContext from '../SessionContext'
 import mysqlPool from '../mysqlPool'
 import StateAggregator from '../StateAggregator'
@@ -61,7 +61,7 @@ class AlterRegexSubscriber extends Subscriber {
             const redis = await getRedis()
             await redis.hset('regexes', newRegexKey, newRegexValue)
             await redis.publish('list-change',
-                AlterTranslationAction.id + ',' + newRegexKey + ',' + newRegexValue)
+                AlterRegexAction.id + ',' + newRegexKey)
         } catch (e) {
             console.error(e)
             ctx.sendChatComponentMessage(new Message(
