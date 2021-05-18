@@ -126,7 +126,7 @@ async function begin() {
                 const val = await redis.hget('lang:' + lang, key)
                 buf = new SetTranslationAction(key, lang, val).build()
             } else if (id == AlterRegexAction.id) {
-                buf = new SetRegexAction(key, await redis.hget('regexes', key))
+                buf = new SetRegexAction(key, await redis.hget('regexes', key)).build()
             } else if (id == DeleteAliasedActionAction.id) {
                 buf = new RemoveAliasedActionAction(key).build()
             } else if (id == DeleteButtonAction.id) {

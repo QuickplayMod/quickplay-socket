@@ -1,4 +1,4 @@
-import {Action, ChatFormatting, DeleteScreenAction, Message, Subscriber} from '@quickplaymod/quickplay-actions-js'
+import {Action, ChatFormatting, DeleteRegexAction, Message, Subscriber} from '@quickplaymod/quickplay-actions-js'
 import SessionContext from '../SessionContext'
 import mysqlPool from '../mysqlPool'
 import StateAggregator from '../StateAggregator'
@@ -28,7 +28,7 @@ class DeleteRegexSubscriber extends Subscriber {
 
             const redis = await getRedis()
             await redis.hdel('regexes', regexKey)
-            await redis.publish('list-change', DeleteScreenAction.id + ',' + regexKey)
+            await redis.publish('list-change', DeleteRegexAction.id + ',' + regexKey)
         } catch (e) {
             console.error(e)
             ctx.sendChatComponentMessage(new Message(
