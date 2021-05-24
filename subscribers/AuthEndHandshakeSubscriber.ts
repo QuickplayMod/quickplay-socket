@@ -58,6 +58,9 @@ class AuthEndHandshakeSubscriber extends Subscriber {
      * not match the ID sent by the client in InitializeClientAction, or on error. True otherwise.
      */
     async validateWithGoogleServers(action: Action, ctx: SessionContext): Promise<boolean> {
+        if(ctx.accountId == -1) {
+            return false
+        }
         // Get the latest handshake request for this user's account from the last minute
         const [res] = <RowDataPacket[]> await mysqlPool.query('SELECT * FROM sessions WHERE user=? AND \
         token IS NULL AND handshake IS NOT NULL AND created > NOW() - INTERVAL 1 MINUTE ORDER BY CREATED DESC LIMIT 1',
@@ -92,6 +95,9 @@ class AuthEndHandshakeSubscriber extends Subscriber {
      * match the UUID sent by the client in InitializeClientAction, or on error. True otherwise.
      */
     async validateWithMojangServers(action: Action, ctx: SessionContext): Promise<boolean> {
+        if(ctx.accountId == -1) {
+            return false
+        }
         // Get the latest handshake request for this user's account from the last minute
         const [res] = <RowDataPacket[]> await mysqlPool.query('SELECT * FROM sessions WHERE user=? AND \
         token IS NULL AND handshake IS NOT NULL AND created > NOW() - INTERVAL 1 MINUTE ORDER BY CREATED DESC LIMIT 1',

@@ -79,6 +79,30 @@ async function generateHandshakeToken(ctx: SessionContext) : Promise<string> {
     return token
 }
 
+
+let lastApiRequest = -1
+let apiQueueSize = 0
+const apiFrequency = 1000 * (60 / 100) /* 60 seconds / 100 requests */
+async function waitForApiTurn() : Promise<void> {
+    const now = Date.now()
+    if(apiQueueSize == 0 && now - lastApiRequest > apiFrequency) {
+        lastApiRequest = now
+        return
+    }
+
+    let timeToWait = (apiFrequency - (now - lastApiRequest)) || 1
+    timeToWait += apiQueueSize * apiFrequency
+    apiQueueSize++
+
+    await new Promise((resolve) => {
+        setTimeout(() => {
+            lastApiRequest = Date.now()
+            apiQueueSize--
+            resolve()
+        }, timeToWait)
+    })
+}
+
 export default class SessionContext {
 
     constructor(conn: WebSocket) {
@@ -93,7 +117,7 @@ export default class SessionContext {
     authedResetTimeout: Timer = null
 
     async getIsAdmin() : Promise<boolean> {
-        if(!this.authed) {
+        if(!this.authed || this.accountId == -1) {
             return false
         }
 
@@ -113,7 +137,7 @@ export default class SessionContext {
     }
 
     async getIsPremium() : Promise<boolean> {
-        if(!this.authed) {
+        if(!this.authed || this.accountId == -1) {
             return false
         }
 
@@ -135,7 +159,7 @@ export default class SessionContext {
     }
 
     async getMinecraftUuid() : Promise<string> {
-        if(!this.authed) {
+        if(!this.authed || this.accountId == -1) {
             return null
         }
 
@@ -161,6 +185,9 @@ export default class SessionContext {
      * sends a new AuthBeginHandshakeAction. Authentication is periodically redone, specifically once every 3 hours.
      */
     async authenticate() : Promise<void> {
+        if(this.accountId == -1) { // Anonymous user
+            return
+        }
         this.authed = false
         if(this.authedResetTimeout != null) {
             clearTimeout(this.authedResetTimeout)
@@ -402,6 +429,8 @@ export default class SessionContext {
                     return parsedCachedValue
                 }
             }
+
+            await waitForApiTurn()
 
             // Get the player's data from the API
             const hypixelRes = await hypixelApi.getPlayer('uuid', mcUuid)

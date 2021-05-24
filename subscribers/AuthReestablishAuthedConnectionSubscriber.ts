@@ -7,6 +7,11 @@ import {RowDataPacket} from 'mysql2'
 
 class AuthReestablishAuthedConnectionSubscriber extends Subscriber {
     async run(action: Action, ctx: SessionContext): Promise<void> {
+        if(ctx.accountId == -1) {
+            console.log('Auth failed: User attempted to reestablish an anonymous connection.')
+            ctx.sendAction(new AuthFailedAction())
+            return
+        }
         const sessionToken = action.getPayloadObjectAsString(0)
         if(!sessionToken) {
             console.log('Auth failed: Connection reestablishment did not contain a valid session token.')

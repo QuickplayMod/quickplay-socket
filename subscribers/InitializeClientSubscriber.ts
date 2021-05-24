@@ -23,15 +23,18 @@ class InitializeClientSubscriber extends Subscriber {
         let identifier = action.getPayloadObjectAsString(0)
         let identifierType = action.getPayloadObjectAsString(1)
 
-        if(!identifier || !identifierType) {
+        if(identifierType.startsWith('"')) {
+            identifierType = JSON.parse(identifierType)
+        }
+
+        console.log(IdentifierTypes)
+        console.log(IdentifierTypes.MOJANG)
+        if(!identifierType || (!identifier && identifierType != IdentifierTypes.ANONYMOUS)) {
             console.log('Auth failed: Missing identifier or identifier type.')
             ctx.sendAction(new AuthFailedAction())
             return
         }
 
-        if(identifierType.startsWith('"')) {
-            identifierType = JSON.parse(identifierType)
-        }
         if(identifierType == IdentifierTypes.MOJANG && identifier.length == 36) {
             identifier = identifier.replace(/-/g, '')
         }
@@ -41,12 +44,14 @@ class InitializeClientSubscriber extends Subscriber {
             id = await this.searchForGoogleAccount(identifier)
         } else if(identifierType == IdentifierTypes.MOJANG) {
             id = await this.findAccountFromMojangUuid(identifier)
+        } else if(identifierType == IdentifierTypes.ANONYMOUS) {
+            id = -1
         } else {
             console.log('Auth failed: Invalid identifier type:', identifierType)
             ctx.sendAction(new AuthFailedAction())
             return
         }
-        if(id == -1) {
+        if(id == -1 && identifierType != IdentifierTypes.ANONYMOUS) {
             // The Google ID received isn't in the database, so we can't identify them, OR
             // The Mojang ID was malformed.
             console.log('Auth failed: Google ID or Mojang UUID provided is not linked to any account.',

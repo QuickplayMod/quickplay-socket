@@ -36,7 +36,7 @@ class DeleteGlyphSubscriber extends Subscriber {
             givenUuid = givenUuid.replace(/-/g, '')
 
             // Only admins are able to edit glyphs of other accounts.
-            if(!isAdmin && ctxUuid != givenUuid) {
+            if(!isAdmin && (!ctxUuid || ctxUuid != givenUuid)) {
                 ctx.sendChatComponentMessage(new Message(
                     (await StateAggregator.translateComponent(ctx.data.language as string || 'en_us',
                         'quickplay.noPermission'))

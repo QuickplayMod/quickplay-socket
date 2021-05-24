@@ -67,7 +67,7 @@ class AlterGlyphSubscriber extends Subscriber {
             }
             obj.uuid = obj.uuid.replace(/-/g, '')
             // Only admins are able to edit glyphs of other accounts.
-            if(!isAdmin && uuid != obj.uuid) {
+            if(!isAdmin && (!uuid || uuid != obj.uuid)) {
                 ctx.sendChatComponentMessage(new Message(
                     (await StateAggregator.translateComponent(ctx.data.language as string || 'en_us',
                         'quickplay.noPermission'))
