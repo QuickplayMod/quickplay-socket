@@ -43,6 +43,8 @@ class AlterAliasedActionSubscriber extends Subscriber {
             aliasedActionRes[0].hypixelBuildTeamOnly : newAliasedAction.hypixelBuildTeamOnly
         const newHypixelBuildTeamAdminOnly = newAliasedAction.hypixelBuildTeamAdminOnly === undefined ?
             aliasedActionRes[0].hypixelBuildTeamAdminOnly : newAliasedAction.hypixelBuildTeamAdminOnly
+        const newSettingsRegexes = newAliasedAction.settingsRegexes === undefined ?
+            aliasedActionRes[0].settingsRegexes : newAliasedAction.settingsRegexes
 
         // Validation
         let validationFailed = false
@@ -89,17 +91,17 @@ class AlterAliasedActionSubscriber extends Subscriber {
             if(aliasedActionRes.length > 0) {
                 await mysqlPool.query('UPDATE aliased_actions SET availableOn=?, action=?, args=?, visible=?, adminOnly=?, \
                     hypixelLocrawRegex=?, hypixelRankRegex=?, hypixelPackageRankRegex=?, hypixelBuildTeamOnly=?, \
-                    hypixelBuildTeamAdminOnly=? WHERE `key`=?',
+                    hypixelBuildTeamAdminOnly=?, settingsRegexes=? WHERE `key`=?',
                 [JSON.stringify(newAvailableOn), newAction.id, JSON.stringify(newAction.payloadObjs), newVisible,
                     newAdminOnly, JSON.stringify(newHypixelLocrawRegex), newHypixelRankRegex, newHypixelPackageRankRegex,
-                    newHypixelBuildTeamOnly, newHypixelBuildTeamAdminOnly, newAliasedActionKey])
+                    newHypixelBuildTeamOnly, newHypixelBuildTeamAdminOnly, JSON.stringify(newSettingsRegexes), newAliasedActionKey])
             } else {
                 await mysqlPool.query('INSERT INTO aliased_actions (`key`, availableOn, action, args, visible, adminOnly, \
                      hypixelLocrawRegex, hypixelRankRegex, hypixelPackageRankRegex, hypixelBuildTeamOnly, \
-                     hypixelBuildTeamAdminOnly) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+                     hypixelBuildTeamAdminOnly, settingsRegexes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
                 [newAliasedActionKey, JSON.stringify(newAvailableOn), newAction.id, JSON.stringify(newAction.payloadObjs),
                     newVisible, newAdminOnly, JSON.stringify(newHypixelLocrawRegex), newHypixelRankRegex,
-                    newHypixelPackageRankRegex, newHypixelBuildTeamOnly, newHypixelBuildTeamAdminOnly])
+                    newHypixelPackageRankRegex, newHypixelBuildTeamOnly, newHypixelBuildTeamAdminOnly, JSON.stringify(newSettingsRegexes)])
             }
 
             // Log the edit to the edit log

@@ -10,6 +10,7 @@ import {
     DisableModAction,
     Glyph,
     Message,
+    RegularExpression,
     Screen,
     SendChatCommandAction,
     SendChatComponentAction,
@@ -19,7 +20,8 @@ import {
     SetGlyphForUserAction,
     SetRegexAction,
     SetScreenAction,
-    SetTranslationAction
+    SetTranslationAction,
+    Translation
 } from '@quickplaymod/quickplay-actions-js'
 import mysqlPool from './mysqlPool'
 import PushEditHistoryEventAction
@@ -341,17 +343,20 @@ export default class SessionContext {
             }
         }
 
-        for(const translation in translations) {
-            if(!translations.hasOwnProperty(translation)) {
+        for(const translationKey in translations) {
+            if(!translations.hasOwnProperty(translationKey)) {
                 continue
             }
-            this.sendAction(new SetTranslationAction(translation, this.data.language as string, translations[translation]))
+            const translation = new Translation(translationKey)
+            translation.lang = this.data.language as string
+            translation.value = translations[translationKey]
+            this.sendAction(new SetTranslationAction())
         }
-        for(const regex in regexes) {
-            if(!regexes.hasOwnProperty(regex)) {
+        for(const regexKey in regexes) {
+            if(!regexes.hasOwnProperty(regexKey)) {
                 continue
             }
-            this.sendAction(new SetRegexAction(regex, regexes[regex]))
+            this.sendAction(new SetRegexAction(new RegularExpression(regexKey, regexes[regexKey])))
         }
         for(const action in aliasedActions) {
             if(!aliasedActions.hasOwnProperty(action)) {

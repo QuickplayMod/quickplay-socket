@@ -27,8 +27,6 @@ class InitializeClientSubscriber extends Subscriber {
             identifierType = JSON.parse(identifierType)
         }
 
-        console.log(IdentifierTypes)
-        console.log(IdentifierTypes.MOJANG)
         if(!identifierType || (!identifier && identifierType != IdentifierTypes.ANONYMOUS)) {
             console.log('Auth failed: Missing identifier or identifier type.')
             ctx.sendAction(new AuthFailedAction())

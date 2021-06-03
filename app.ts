@@ -23,6 +23,7 @@ import {
     Glyph,
     InitializeClientAction,
     MigrateKeybindsAction,
+    RegularExpression,
     RemoveAliasedActionAction,
     RemoveButtonAction,
     RemoveGlyphAction,
@@ -40,7 +41,8 @@ import {
     SetGlyphForUserAction,
     SetRegexAction,
     SetScreenAction,
-    SetTranslationAction
+    SetTranslationAction,
+    Translation
 } from '@quickplaymod/quickplay-actions-js'
 import StateAggregator from './StateAggregator'
 import SessionContext from './SessionContext'
@@ -122,11 +124,12 @@ async function begin() {
                 const scr = await Screen.deserialize(await redis.hget('screens', key))
                 buf = new SetScreenAction(scr).build()
             } else if (id == AlterTranslationAction.id) {
-                const lang = splitMsg[2]
-                const val = await redis.hget('lang:' + lang, key)
-                buf = new SetTranslationAction(key, lang, val).build()
+                const translation = new Translation(key)
+                translation.lang = splitMsg[2]
+                translation.value = await redis.hget('lang:' + translation.lang, key)
+                buf = new SetTranslationAction(translation).build()
             } else if (id == AlterRegexAction.id) {
-                buf = new SetRegexAction(key, await redis.hget('regexes', key)).build()
+                buf = new SetRegexAction(new RegularExpression(key, await redis.hget('regexes', key))).build()
             } else if (id == DeleteAliasedActionAction.id) {
                 buf = new RemoveAliasedActionAction(key).build()
             } else if (id == DeleteButtonAction.id) {
@@ -136,8 +139,9 @@ async function begin() {
             } else if (id == DeleteRegexAction.id) {
                 buf = new RemoveRegexAction(key).build()
             } else if (id == DeleteTranslationAction.id) {
-                const lang = splitMsg[2]
-                buf = new RemoveTranslationAction(key, lang).build()
+                const translation = new Translation(key)
+                translation.lang = splitMsg[2]
+                buf = new RemoveTranslationAction(translation).build()
             }
 
             ws.clients.forEach((conn) => {

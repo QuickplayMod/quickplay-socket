@@ -8,8 +8,8 @@
   },
   "dependencies": {
     "@azure/storage-file-share": "^12.5.0",
-    "@quickplaymod/quickplay-actions-js": "^1.6.9",
-    "aws-sdk": "^2.912.0",
+    "@quickplaymod/quickplay-actions-js": "^1.7.1",
+    "aws-sdk": "^2.920.0",
     "axios": "^0.21.1",
     "google-auth-library": "^6.1.6",
     "hypixel-api": "^1.2.0",
@@ -19,13 +19,13 @@
     "sharp": "^0.27.2",
     "sprintf-js": "^1.1.2",
     "valid-url": "^1.0.9",
-    "ws": "^7.4.5"
+    "ws": "^7.4.6"
   },
   "devDependencies": {
     "@types/axios": "^0.14.0",
     "@types/ioredis": "^4.26.4",
     "@types/moment": "^2.13.0",
-    "@types/node": "^14.17.0",
+    "@types/node": "^14.17.2",
     "@types/sprintf-js": "^1.1.2",
     "@types/ws": "^7.4.4",
     "@typescript-eslint/eslint-plugin": "^3.10.1",

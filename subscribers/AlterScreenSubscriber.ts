@@ -47,6 +47,8 @@ class AlterScreenSubscriber extends Subscriber {
             screenRes[0].hypixelBuildTeamOnly : newScreen.hypixelBuildTeamOnly
         const newHypixelBuildTeamAdminOnly = newScreen.hypixelBuildTeamAdminOnly === undefined ?
             screenRes[0].hypixelBuildTeamAdminOnly : newScreen.hypixelBuildTeamAdminOnly
+        const newSettingsRegexes = newScreen.settingsRegexes === undefined ?
+            screenRes[0].settingsRegexes : newScreen.settingsRegexes
 
         // Validation
         let validationFailed = false
@@ -76,20 +78,20 @@ class AlterScreenSubscriber extends Subscriber {
             if(screenRes.length > 0) {
                 await mysqlPool.query('UPDATE screens SET screenType=?, availableOn=?, translationKey=?, imageURL=?, \
                     buttons=?, backButtonActions=?, visible=?, adminOnly=?, hypixelLocrawRegex=?, hypixelRankRegex=?, \
-                    hypixelPackageRankRegex=?, hypixelBuildTeamOnly=?, hypixelBuildTeamAdminOnly=?  WHERE `key`=?',
+                    hypixelPackageRankRegex=?, hypixelBuildTeamOnly=?, hypixelBuildTeamAdminOnly=?, settingsRegexes=?  WHERE `key`=?',
                 [newScreenType, JSON.stringify(newAvailableOn), newTranslationKey, newImageUrl,
                     JSON.stringify(newScreenButtons), JSON.stringify(newBackButtonActions), newVisible, newAdminOnly,
                     JSON.stringify(newHypixelLocrawRegex), newHypixelRankRegex, newHypixelPackageRankRegex,
-                    newHypixelBuildTeamOnly, newHypixelBuildTeamAdminOnly, newScreenKey])
+                    newHypixelBuildTeamOnly, newHypixelBuildTeamAdminOnly, JSON.stringify(newSettingsRegexes), newScreenKey])
             } else {
                 await mysqlPool.query('INSERT INTO screens (`key`, screenType, availableOn, translationKey, imageURL, \
                     buttons, backButtonActions, visible, adminOnly, hypixelLocrawRegex, hypixelRankRegex, \
-                    hypixelPackageRankRegex, hypixelBuildTeamOnly, hypixelBuildTeamAdminOnly) VALUES \
-                    (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                    hypixelPackageRankRegex, hypixelBuildTeamOnly, hypixelBuildTeamAdminOnly, settingsRegexes) VALUES \
+                    (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
                 [newScreenKey, newScreenType, JSON.stringify(newAvailableOn), newTranslationKey, newImageUrl,
                     JSON.stringify(newScreenButtons), JSON.stringify(newBackButtonActions), newVisible, newAdminOnly,
                     JSON.stringify(newHypixelLocrawRegex), newHypixelRankRegex, newHypixelPackageRankRegex,
-                    newHypixelBuildTeamOnly, newHypixelBuildTeamAdminOnly])
+                    newHypixelBuildTeamOnly, newHypixelBuildTeamAdminOnly, JSON.stringify(newSettingsRegexes)])
             }
 
             // Log the edit to the edit log

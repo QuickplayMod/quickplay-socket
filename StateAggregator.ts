@@ -113,6 +113,7 @@ class StateAggregator {
         aa.hypixelPackageRankRegex = res[0].hypixelPackageRankRegex
         aa.hypixelBuildTeamOnly = res[0].hypixelBuildTeamOnly
         aa.hypixelBuildTeamAdminOnly = res[0].hypixelBuildTeamAdminOnly
+        aa.settingsRegexes = res[0].settingsRegexes
         const args = res[0].args || []
         for(let i = 0; i < args.length; i++) {
             aa.action.addPayload(Buffer.from(args[0]))
@@ -143,6 +144,7 @@ class StateAggregator {
         b.hypixelBuildTeamAdminOnly = res[0].hypixelBuildTeamAdminOnly
         b.visibleInPartyMode = res[0].visibleInPartyMode
         b.partyModeScopeTranslationKey = res[0].partyModeScopeTranslationKey
+        b.settingsRegexes = res[0].settingsRegexes
         const actions = res[0].actions || []
         for(let i = 0; i < actions.length; i++) {
             b.actions.push(actions[i])
@@ -171,6 +173,7 @@ class StateAggregator {
         s.hypixelPackageRankRegex = res[0].hypixelPackageRankRegex
         s.hypixelBuildTeamOnly = res[0].hypixelBuildTeamOnly
         s.hypixelBuildTeamAdminOnly = res[0].hypixelBuildTeamAdminOnly
+        s.settingsRegexes = res[0].settingsRegexes
 
         const actions = res[0].backButtonActions || []
         for(let i = 0; i < actions.length; i++) {
