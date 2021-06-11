@@ -350,7 +350,7 @@ export default class SessionContext {
             const translation = new Translation(translationKey)
             translation.lang = this.data.language as string
             translation.value = translations[translationKey]
-            this.sendAction(new SetTranslationAction())
+            this.sendAction(new SetTranslationAction(translation))
         }
         for(const regexKey in regexes) {
             if(!regexes.hasOwnProperty(regexKey)) {
