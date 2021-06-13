@@ -2,6 +2,7 @@ import * as crypto from 'crypto'
 import * as Hypixel from 'hypixel-api'
 import {
     Action,
+    AddUserCountHistoryAction,
     AliasedAction,
     AuthBeginHandshakeAction,
     Button,
@@ -9,7 +10,9 @@ import {
     ChatFormatting,
     DisableModAction,
     Glyph,
+    IdentifierTypes,
     Message,
+    PushEditHistoryEventAction,
     RegularExpression,
     Screen,
     SendChatCommandAction,
@@ -21,17 +24,13 @@ import {
     SetRegexAction,
     SetScreenAction,
     SetTranslationAction,
-    Translation
+    Translation,
 } from '@quickplaymod/quickplay-actions-js'
 import mysqlPool from './mysqlPool'
-import PushEditHistoryEventAction
-    from '@quickplaymod/quickplay-actions-js/dist/actions/clientbound/PushEditHistoryEventAction'
 import {getRedis} from './redis'
 import {sprintf} from 'sprintf-js'
 import {RowDataPacket} from 'mysql2'
 import SetCurrentServerAction from '@quickplaymod/quickplay-actions-js/dist/actions/clientbound/SetCurrentServerAction'
-import AddUserCountHistoryAction
-    from '@quickplaymod/quickplay-actions-js/dist/actions/clientbound/AddUserCountHistoryAction'
 import WebSocket = require('ws');
 import Timer = NodeJS.Timer;
 
@@ -43,6 +42,17 @@ const hypixelApi = new Hypixel(process.env.HYPIXEL_API_KEY)
  * @param ctx {SessionContext} Session context to generate the token for.
  */
 async function generateHandshakeToken(ctx: SessionContext) : Promise<string> {
+
+    const bytes = crypto.randomBytes(32)
+    const token = bytes.toString('hex')
+
+    // Since Discord authentication doesn't support unauthenticated account IDs, and thus we can't save the
+    // token to the database.
+    if(ctx.authMode == IdentifierTypes.DISCORD) {
+        ctx.data.discordState = token
+        return token
+    }
+
     // Handshakes can only be generated every 5 seconds per user
     let res
     try {
@@ -56,16 +66,13 @@ async function generateHandshakeToken(ctx: SessionContext) : Promise<string> {
         ))
         return null
     }
-    if(res[0]['COUNT(id)'] > 0) {
+    if(res[0]['COUNT(id)'] > 2) {
         ctx.sendChatComponentMessage(new Message(
             new ChatComponent('Quickplay authentication failed: You\'re doing that too fast! Try again in a few seconds.')
                 .setColor(ChatFormatting.red)
         ))
         return null
     }
-
-    const bytes = crypto.randomBytes(32)
-    const token = bytes.toString('hex')
 
     try {
         await mysqlPool.query('INSERT INTO sessions (handshake, user) VALUES (?,?)', [token, ctx.accountId])
@@ -116,6 +123,7 @@ export default class SessionContext {
     lastPong: number
     authed = false
     accountId = -1
+    authMode = IdentifierTypes.ANONYMOUS
     authedResetTimeout: Timer = null
 
     async getIsAdmin() : Promise<boolean> {
@@ -187,7 +195,8 @@ export default class SessionContext {
      * sends a new AuthBeginHandshakeAction. Authentication is periodically redone, specifically once every 3 hours.
      */
     async authenticate() : Promise<void> {
-        if(this.accountId == -1) { // Anonymous user
+        // Anonymous user -- Discord auth modes require full authentication before accountId is retrieved.
+        if(this.accountId == -1 && this.authMode != IdentifierTypes.DISCORD) {
             return
         }
         this.authed = false

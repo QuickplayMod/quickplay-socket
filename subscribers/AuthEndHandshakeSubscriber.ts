@@ -10,14 +10,10 @@ import {
     AuthMojangEndHandshakeAction,
     Subscriber
 } from '@quickplaymod/quickplay-actions-js'
-import {OAuth2Client} from 'google-auth-library'
 import DisableModAction from '@quickplaymod/quickplay-actions-js/dist/actions/clientbound/DisableModAction'
 import {RowDataPacket} from 'mysql2'
 
 class AuthEndHandshakeSubscriber extends Subscriber {
-
-    googleClientId = '582909709971-7t8enm7eoivok989ilodl49eqcc0lg31.apps.googleusercontent.com'
-    googleClient = new OAuth2Client(this.googleClientId)
 
     async run(action: Action, ctx: SessionContext): Promise<void> {
         if(ctx.authed) {
@@ -30,7 +26,7 @@ class AuthEndHandshakeSubscriber extends Subscriber {
             if(action instanceof AuthMojangEndHandshakeAction) {
                 valid = await this.validateWithMojangServers(action, ctx)
             } else {
-                valid = await this.validateWithGoogleServers(action, ctx)
+                valid = await this.validateWithDiscordServers(action, ctx)
             }
         } catch(e) {
             console.error(e)
@@ -50,39 +46,49 @@ class AuthEndHandshakeSubscriber extends Subscriber {
     }
 
     /**
-     * Validate that the user has authenticated with the Google servers, confirming their identity.
+     * Validate that the user has authenticated with the Discord servers, confirming their identity.
      * @param action {Action} Action triggering this subscriber.
      * @param ctx {SessionContext} The session for the user triggering this subscriber.
-     * @returns {Promise<boolean>} False if the user has not initialized their client within the last minute,
-     * if they have not authenticated with Google, if the Google account ID received from Google does
-     * not match the ID sent by the client in InitializeClientAction, or on error. True otherwise.
+     * @returns {Promise<boolean>} False if the user has not authenticated with Discord, or on error. True otherwise.
      */
-    async validateWithGoogleServers(action: Action, ctx: SessionContext): Promise<boolean> {
-        if(ctx.accountId == -1) {
+    async validateWithDiscordServers(action: Action, ctx: SessionContext): Promise<boolean> {
+        // Safety check against CSRF. Client should have already checked this, but this is an extra check.
+        if(action.getPayloadObjectAsString(1) != ctx.data.discordState) {
             return false
         }
-        // Get the latest handshake request for this user's account from the last minute
-        const [res] = <RowDataPacket[]> await mysqlPool.query('SELECT * FROM sessions WHERE user=? AND \
-        token IS NULL AND handshake IS NOT NULL AND created > NOW() - INTERVAL 1 MINUTE ORDER BY CREATED DESC LIMIT 1',
-        [ctx.accountId])
-        // Get user's account data
-        const [accountRes] = <RowDataPacket[]> await mysqlPool.query('SELECT * FROM accounts WHERE id=?',
-            [ctx.accountId])
+        const discAuthResponse = await axios.post('https://discordapp.com/api/oauth2/token', new URLSearchParams({
+            client_id: process.env.DISCORD_CLIENT_ID,
+            client_secret: process.env.DISCORD_CLIENT_SECRET,
+            grant_type: 'authorization_code',
+            code: action.getPayloadObjectAsString(0),
+            redirect_uri: process.env.DISCORD_OAUTH_REDIRECT_URI
 
-        if(res.length <= 0 || accountRes.length <= 0) {
-            return false
-        }
+        }))
+        const discordAccessToken = discAuthResponse?.data?.access_token
 
-        const ticket = await this.googleClient.verifyIdToken({
-            idToken: action.getPayloadObjectAsString(0),
-            audience: this.googleClientId
+        const discMeResponse = await axios.get('https://discord.com/api/v9/users/@me', {
+            headers: {
+                authorization: 'Bearer ' + discordAccessToken
+            }
         })
-        const userId = ticket.getPayload().sub
-        // Fail if for some reason the account IDs aren't matching.
-        if(userId != accountRes[0].google_id as string) {
-            console.error('Mismatching Google IDs:', userId, accountRes[0].google_id)
+
+        if(!discMeResponse?.data?.id) {
+            console.log('No Discord user ID received from Discord API!')
             return false
         }
+
+        const id = discMeResponse.data.id
+
+        const [sqlAccountRes] = (<RowDataPacket[]> await mysqlPool.query('SELECT id FROM accounts WHERE discord_id=?', id))
+        if(sqlAccountRes.length == 0) {
+            return false // No account exists w/ this Discord account
+            // TODO linking system. Something like "Please run command /qp linkdiscord <special code>" in MC
+        }
+        ctx.accountId = sqlAccountRes[0].id
+        // Create the session for this user, since it wasn't created before authentication like MC.
+        await mysqlPool.query('INSERT INTO sessions (user, handshake) VALUES (?,?)', [ctx.accountId, ctx.data.discordState])
+
+        await ctx.sendGameListData() // Resend games list now that we know the user's identity.
         return true
     }
 
@@ -169,7 +175,7 @@ class AuthEndHandshakeSubscriber extends Subscriber {
 
         const userRankData = await ctx.getHypixelRankData()
         ctx.sendAction(new AuthCompleteAction(token, moment().add(3, 'h').toDate(),
-            accountRes[0].mc_uuid, accountRes[0].discord_id || '', accountRes[0].google_id || '',
+            accountRes[0].mc_uuid, accountRes[0].discord_id || '',
             !!accountRes[0].is_admin, (premiumRes.length > 0), premiumExpiration,
             userRankData.rank, userRankData.packageRank, userRankData.isBuildTeam, userRankData.isBuildTeamAdmin))
 

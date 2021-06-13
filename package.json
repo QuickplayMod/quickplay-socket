@@ -7,13 +7,13 @@
     "dev": "npx nodemon -w . --inspect=0.0.0.0:5859 -L build/app.js"
   },
   "dependencies": {
-    "@azure/storage-file-share": "^12.5.0",
-    "@quickplaymod/quickplay-actions-js": "^1.7.1",
-    "aws-sdk": "^2.920.0",
+    "@azure/storage-file-share": "^12.6.0",
+    "@quickplaymod/quickplay-actions-js": "^2.0.1",
+    "aws-sdk": "^2.927.0",
     "axios": "^0.21.1",
     "google-auth-library": "^6.1.6",
     "hypixel-api": "^1.2.0",
-    "ioredis": "^4.27.3",
+    "ioredis": "^4.27.5",
     "moment": "^2.29.1",
     "mysql2": "^2.2.5",
     "sharp": "^0.27.2",
@@ -25,12 +25,12 @@
     "@types/axios": "^0.14.0",
     "@types/ioredis": "^4.26.4",
     "@types/moment": "^2.13.0",
-    "@types/node": "^14.17.2",
+    "@types/node": "^14.17.3",
     "@types/sprintf-js": "^1.1.2",
     "@types/ws": "^7.4.4",
     "@typescript-eslint/eslint-plugin": "^3.10.1",
     "@typescript-eslint/parser": "^3.10.1",
-    "eslint": "^7.27.0",
+    "eslint": "^7.28.0",
     "nodemon": "^2.0.7",
     "typescript": "^3.9.9"
   }

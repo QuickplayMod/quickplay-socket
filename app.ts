@@ -10,7 +10,7 @@ import {
     AlterRegexAction,
     AlterScreenAction,
     AlterTranslationAction,
-    AuthGoogleEndHandshakeAction,
+    AuthDiscordEndHandshakeAction,
     AuthMojangEndHandshakeAction,
     AuthReestablishAuthedConnectionAction,
     Button,
@@ -196,7 +196,7 @@ async function begin() {
     actionBus.subscribe(MigrateKeybindsAction, new MigrateKeybindsSubscriber())
     const endAuthSub = new AuthEndHandshakeSubscriber()
     actionBus.subscribe(AuthMojangEndHandshakeAction, endAuthSub)
-    actionBus.subscribe(AuthGoogleEndHandshakeAction, endAuthSub)
+    actionBus.subscribe(AuthDiscordEndHandshakeAction, endAuthSub)
     actionBus.subscribe(InitializeClientAction, new InitializeClientSubscriber())
     actionBus.subscribe(AuthReestablishAuthedConnectionAction, new AuthReestablishAuthedConnectionSubscriber())
     actionBus.subscribe(AlterScreenAction, new AlterScreenSubscriber())

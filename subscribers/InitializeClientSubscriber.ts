@@ -1,6 +1,5 @@
 import SessionContext from '../SessionContext'
-import {Action, AuthFailedAction, Subscriber} from '@quickplaymod/quickplay-actions-js'
-import {IdentifierTypes} from '@quickplaymod/quickplay-actions-js/dist/actions/serverbound/InitializeClientAction'
+import {Action, AuthFailedAction, IdentifierTypes, Subscriber} from '@quickplaymod/quickplay-actions-js'
 import mysqlPool from '../mysqlPool'
 import {RowDataPacket} from 'mysql2'
 
@@ -27,7 +26,8 @@ class InitializeClientSubscriber extends Subscriber {
             identifierType = JSON.parse(identifierType)
         }
 
-        if(!identifierType || (!identifier && identifierType != IdentifierTypes.ANONYMOUS)) {
+        if(!identifierType ||
+            (!identifier && identifierType != IdentifierTypes.ANONYMOUS && identifierType != IdentifierTypes.DISCORD)) {
             console.log('Auth failed: Missing identifier or identifier type.')
             ctx.sendAction(new AuthFailedAction())
             return
@@ -38,26 +38,29 @@ class InitializeClientSubscriber extends Subscriber {
         }
 
         let id
-        if(identifierType == IdentifierTypes.GOOGLE) {
-            id = await this.searchForGoogleAccount(identifier)
-        } else if(identifierType == IdentifierTypes.MOJANG) {
+        if(identifierType == IdentifierTypes.MOJANG) {
             id = await this.findAccountFromMojangUuid(identifier)
-        } else if(identifierType == IdentifierTypes.ANONYMOUS) {
+        } else if (identifierType == IdentifierTypes.DISCORD && identifier) {
+            id = await this.findAccountFromDiscordId(identifier)
+        // Identifier is not required with discord identifier type. It is only necessary if the client wants to
+        // re-establish a previously-established connection.
+        } else if(identifierType == IdentifierTypes.ANONYMOUS || identifierType == IdentifierTypes.DISCORD) {
             id = -1
         } else {
             console.log('Auth failed: Invalid identifier type:', identifierType)
             ctx.sendAction(new AuthFailedAction())
             return
         }
-        if(id == -1 && identifierType != IdentifierTypes.ANONYMOUS) {
-            // The Google ID received isn't in the database, so we can't identify them, OR
-            // The Mojang ID was malformed.
-            console.log('Auth failed: Google ID or Mojang UUID provided is not linked to any account.',
+
+        // If the user provided an ID and they aren't using anonymous mode, then give an error
+        if(id == -1 && identifierType != IdentifierTypes.ANONYMOUS && identifier) {
+            console.log('Auth failed: Malformed Mojang UUID or invalid Discord ID',
                 'ID:', identifier, 'ID type:', identifierType)
             ctx.sendAction(new AuthFailedAction())
             return
         }
         ctx.accountId = id
+        ctx.authMode = identifierType
 
         await ctx.authenticate()
         await ctx.sendGameListData()
@@ -88,16 +91,17 @@ class InitializeClientSubscriber extends Subscriber {
     }
 
     /**
-     * Search the database for an account associated with the passed Google account ID.
-     * @param accountId {string} Google account ID to search for.
-     * @returns {Promise<number>} The account number, or -1 if the Google ID is not associated with any account.
+     * Find the account ID from the provided Discord ID.
+     * @param accountId {string} Discord ID
+     * @returns {Promise<number>} The account number, or -1 if the account ID passed is malformed or not found.
      */
-    async searchForGoogleAccount(accountId: string) : Promise<number> {
+    async findAccountFromDiscordId(accountId: string): Promise<number> {
         if(!accountId) {
             return -1
         }
-        const [res] = <RowDataPacket[]> await mysqlPool.query('SELECT google_id, id FROM accounts WHERE google_id=? LIMIT 1',
+        const [res] = <RowDataPacket[]> await mysqlPool.query('SELECT id FROM accounts WHERE discord_id=? LIMIT 1',
             [accountId])
+
         if(res.length <= 0) {
             return -1
         }

@@ -62,7 +62,7 @@ class AuthReestablishAuthedConnectionSubscriber extends Subscriber {
 
         const userRankData = await ctx.getHypixelRankData()
         ctx.sendAction(new AuthCompleteAction(sessionToken, sessionExpiration.toDate(),
-            accountRes[0].mc_uuid, accountRes[0].discord_id || '', accountRes[0].google_id || '',
+            accountRes[0].mc_uuid, accountRes[0].discord_id || '',
             !!accountRes[0].is_admin, (premiumRes.length > 0), premiumExpiration,
             userRankData.rank, userRankData.packageRank, userRankData.isBuildTeam, userRankData.isBuildTeamAdmin))
 
