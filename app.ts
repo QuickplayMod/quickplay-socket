@@ -22,6 +22,7 @@ import {
     DeleteTranslationAction,
     Glyph,
     InitializeClientAction,
+    LinkDiscordAction,
     MigrateKeybindsAction,
     RegularExpression,
     RemoveAliasedActionAction,
@@ -69,6 +70,7 @@ import AlterGlyphSubscriber from './subscribers/AlterGlyphSubscriber'
 import DeleteGlyphSubscriber from './subscribers/DeleteGlyphSubscriber'
 import AlterRegexSubscriber from './subscribers/AlterRegexSubscriber'
 import DeleteRegexSubscriber from './subscribers/DeleteRegexSubscriber'
+import LinkDiscordSubscriber from './subscribers/LinkDiscordSubscriber'
 
 let redis : IORedis.Redis
 let redisSub : IORedis.Redis
@@ -214,6 +216,7 @@ async function begin() {
     actionBus.subscribe(DeleteGlyphAction, new DeleteGlyphSubscriber())
     actionBus.subscribe(AlterRegexAction, new AlterRegexSubscriber())
     actionBus.subscribe(DeleteRegexAction, new DeleteRegexSubscriber())
+    actionBus.subscribe(LinkDiscordAction, new LinkDiscordSubscriber())
 
     // Delete all data points when the server initially starts, and then every 24 hours.
     setInterval(deleteOldConnectionDatapoints, 86400000)

@@ -21,19 +21,19 @@ class AuthEndHandshakeSubscriber extends Subscriber {
             ctx.sendAction(new AuthFailedAction())
             throw new Error('Illegal state: User already authed and is attempting to finish authentication again.')
         }
-        let valid = false
+        let validResponse : {valid: boolean, reason?: string} = {valid: false}
         try {
             if(action instanceof AuthMojangEndHandshakeAction) {
-                valid = await this.validateWithMojangServers(action, ctx)
+                validResponse = await this.validateWithMojangServers(action, ctx)
             } else {
-                valid = await this.validateWithDiscordServers(action, ctx)
+                validResponse = await this.validateWithDiscordServers(action, ctx)
             }
         } catch(e) {
             console.error(e)
         }
-        if(!valid) {
-            console.log('Auth failed: Authentication with 3rd party returned false.')
-            ctx.sendAction(new AuthFailedAction())
+        if(!validResponse.valid) {
+            console.log('Auth failed: Authentication with 3rd party returned false. Reason: ' + validResponse.reason)
+            ctx.sendAction(new AuthFailedAction(validResponse.reason || ''))
             return
         }
 
@@ -49,12 +49,14 @@ class AuthEndHandshakeSubscriber extends Subscriber {
      * Validate that the user has authenticated with the Discord servers, confirming their identity.
      * @param action {Action} Action triggering this subscriber.
      * @param ctx {SessionContext} The session for the user triggering this subscriber.
-     * @returns {Promise<boolean>} False if the user has not authenticated with Discord, or on error. True otherwise.
+     * @returns {Promise<{valid: boolean, reason?: string}>} valid = false if the user has not authenticated with
+     *          Discord, or on error. True otherwise. If the user's discord is unlinked, then reason is also set
+     *          to "UNLINKED_DISCORD".
      */
-    async validateWithDiscordServers(action: Action, ctx: SessionContext): Promise<boolean> {
+    async validateWithDiscordServers(action: Action, ctx: SessionContext): Promise<{ valid: boolean, reason?: string }> {
         // Safety check against CSRF. Client should have already checked this, but this is an extra check.
         if(action.getPayloadObjectAsString(1) != ctx.data.discordState) {
-            return false
+            return {valid: false}
         }
         const discAuthResponse = await axios.post('https://discordapp.com/api/oauth2/token', new URLSearchParams({
             client_id: process.env.DISCORD_CLIENT_ID,
@@ -74,35 +76,39 @@ class AuthEndHandshakeSubscriber extends Subscriber {
 
         if(!discMeResponse?.data?.id) {
             console.log('No Discord user ID received from Discord API!')
-            return false
+            return {valid: false}
         }
 
         const id = discMeResponse.data.id
 
         const [sqlAccountRes] = (<RowDataPacket[]> await mysqlPool.query('SELECT id FROM accounts WHERE discord_id=?', id))
         if(sqlAccountRes.length == 0) {
-            return false // No account exists w/ this Discord account
-            // TODO linking system. Something like "Please run command /qp linkdiscord <special code>" in MC
+            // No account exists w/ this Discord account. UNLINKED_DISCORD reason is sent, and the user
+            // is prompted to link their Discord account to their Quickplay account by logging into the MC auth service.
+            // Discord identity is saved until they do so.
+            ctx.data.awaitingDiscordLink = true
+            ctx.data.discordLinkId = id
+            return {valid: false, reason: 'UNLINKED_DISCORD'}
         }
         ctx.accountId = sqlAccountRes[0].id
         // Create the session for this user, since it wasn't created before authentication like MC.
         await mysqlPool.query('INSERT INTO sessions (user, handshake) VALUES (?,?)', [ctx.accountId, ctx.data.discordState])
 
         await ctx.sendGameListData() // Resend games list now that we know the user's identity.
-        return true
+        return {valid: true}
     }
 
     /**
      * Validate that the user has logged into the Mojang servers, confirming their identity.
      * @param action {Action} Action triggering this subscriber.
      * @param ctx {SessionContext} The session for the user triggering this subscriber.
-     * @returns {Promise<boolean>} False if the user has not initialized their client within the last minute,
-     * if they have not logged into the Mojang servers, if the UUID received by the Mojang servers does not
-     * match the UUID sent by the client in InitializeClientAction, or on error. True otherwise.
+     * @returns {Promise<{valid: boolean, reason?: string}>} valid = false if the user has not initialized their client within
+     * the last minute, if they have not logged into the Mojang servers, if the UUID received by the Mojang servers does not
+     * match the UUID sent by the client in InitializeClientAction, or on error. True otherwise. Reason unused.
      */
-    async validateWithMojangServers(action: Action, ctx: SessionContext): Promise<boolean> {
+    async validateWithMojangServers(action: Action, ctx: SessionContext): Promise<{valid: boolean, reason?: string}> {
         if(ctx.accountId == -1) {
-            return false
+            return {valid: false}
         }
         // Get the latest handshake request for this user's account from the last minute
         const [res] = <RowDataPacket[]> await mysqlPool.query('SELECT * FROM sessions WHERE user=? AND \
@@ -113,7 +119,7 @@ class AuthEndHandshakeSubscriber extends Subscriber {
             [ctx.accountId])
 
         if(res.length <= 0 || accountRes.length <= 0) {
-            return false
+            return {valid: false}
         }
 
         // Create a digest from the handshake and the user's UUID
@@ -125,15 +131,15 @@ class AuthEndHandshakeSubscriber extends Subscriber {
 
         // Response will always be 200 if the user has joined
         if(response?.status != 200) {
-            return false
+            return {valid: false}
         }
 
         // Fail if for some reason the UUIDs aren't matching.
         if(response.data?.id != accountRes[0].mc_uuid as string) {
             console.error('Mismatching UUIDS:', response.data?.id, accountRes[0].mc_uuid)
-            return false
+            return {valid: false}
         }
-        return true
+        return {valid: true}
     }
 
     /**
