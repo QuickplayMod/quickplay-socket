@@ -14,7 +14,7 @@
     "google-auth-library": "^6.1.6",
     "hypixel-api": "^1.2.0",
     "ioredis": "^4.27.6",
-    "moment": "^2.29.1",
+    "moment": "^2.29.2",
     "mysql2": "^2.2.5",
     "sharp": "^0.27.2",
     "sprintf-js": "^1.1.2",
