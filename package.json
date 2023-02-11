@@ -31,7 +31,7 @@
     "@typescript-eslint/eslint-plugin": "^3.10.1",
     "@typescript-eslint/parser": "^3.10.1",
     "eslint": "^7.28.0",
-    "nodemon": "^2.0.7",
+    "nodemon": "^2.0.20",
     "typescript": "^3.9.9"
   }
 }
